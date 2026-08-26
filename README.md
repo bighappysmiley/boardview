@@ -80,11 +80,13 @@ Postgres later without switching providers.
    you anything to have it wired up.
 2. In **Developers → API keys**, copy the **Secret key** into `.env.local` as
    `STRIPE_SECRET_KEY`.
-3. Create a Product + Price for each hardware kit listed in
-   `src/lib/hardwareKits.ts`, and put each Price ID (starts with `price_`)
-   into the matching env var (`STRIPE_PRICE_CLASSROOM_KIT`, etc.).
-4. Until those are set, the pricing page still renders — the buy buttons just
-   show a message pointing people to email you instead of erroring out.
+3. Create a Product + Price for each item listed in
+   `src/lib/hardwareKits.ts` (desk set, extra camera, extra screen), and put
+   each Price ID (starts with `price_`) into the matching env var
+   (`STRIPE_PRICE_DESK_SET`, and so on). The desk set still accepts the older
+   `STRIPE_PRICE_CLASSROOM_KIT` name.
+4. Until those are set, the order page still renders — it asks people to
+   email you instead of erroring out.
 
 ### Deploying to Netlify (free)
 
