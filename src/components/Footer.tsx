@@ -5,7 +5,6 @@ import { Container } from "./layout";
 const links = [
   { href: "/#how-it-works", label: "How it works" },
   { href: "/pricing", label: "Hardware" },
-  { href: "/screen/demo", label: "Screen preview" },
 ];
 
 export function Footer() {

@@ -75,6 +75,27 @@ export function SectionHeader({
   );
 }
 
+/** Name + definition rows. Used for product specs, not marketing cards. */
+export function SpecRows({
+  items,
+}: {
+  items: { term: string; detail: ReactNode }[];
+}) {
+  return (
+    <dl className="border-t border-black/10">
+      {items.map((item) => (
+        <div
+          key={item.term}
+          className="grid gap-2 border-b border-black/10 py-7 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-10"
+        >
+          <dt className="font-medium">{item.term}</dt>
+          <dd className="leading-relaxed text-muted">{item.detail}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 /** Every card on the site uses this padding and radius. */
 export function Card({
   children,

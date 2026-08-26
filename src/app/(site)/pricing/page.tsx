@@ -33,10 +33,10 @@ export default function PricingPage() {
   }
 
   return (
-    <Section className="!pt-12 sm:!pt-16">
+    <Section className="!pt-20 sm:!pt-28">
       <SectionHeader
         title="Hardware"
-        lead="The BoardView software is free. Kits are bought once, per room."
+        lead="Software is included, and free. Kits are bought once, per room. Price is confirmed at checkout."
       />
 
       {message && (
@@ -45,12 +45,13 @@ export default function PricingPage() {
         </div>
       )}
 
-      <div className="grid gap-10 sm:grid-cols-2 sm:gap-16">
+      <div className="grid gap-16 sm:grid-cols-2">
         {hardwareKits.map((kit) => (
           <div key={kit.id} className="flex flex-col border-t border-black/10 pt-8">
             <h2 className="text-xl font-semibold tracking-tight">{kit.title}</h2>
             <p className="mt-2 leading-relaxed text-muted">{kit.blurb}</p>
-            <ul className="mt-6 flex-1 space-y-2 text-muted">
+            <p className="mt-8 text-sm font-medium">Includes</p>
+            <ul className="mt-3 flex-1 space-y-2 text-muted">
               {kit.bullets.map((bullet) => (
                 <li key={bullet}>{bullet}</li>
               ))}
@@ -60,13 +61,13 @@ export default function PricingPage() {
               disabled={loadingKit === kit.id}
               onClick={() => handleBuy(kit.id)}
             >
-              {loadingKit === kit.id ? "Redirecting…" : "Buy now"}
+              {loadingKit === kit.id ? "Redirecting…" : "Order"}
             </Button>
           </div>
         ))}
       </div>
 
-      <p className="mt-16 max-w-xl text-muted">
+      <p className="mt-20 max-w-xl text-muted">
         Outfitting a district, or need a custom mount?{" "}
         <a
           href="mailto:hello@boardview.org?subject=BoardView%20district%20order"
