@@ -1,43 +1,52 @@
-/** Highest number of any one item you can put in a single order. */
+/**
+ * Shop catalog.
+ *
+ * To sell something new:
+ * 1. Create a Product and Price in Stripe (see README, “Set up Stripe”).
+ * 2. Add STRIPE_PRICE_YOUR_ID to .env.local and to Netlify env vars.
+ * 3. Add an entry below. id must be unique; envKey must match the env var.
+ * Checkout and the shop page pick it up automatically.
+ */
+
 export const MAX_QTY = 50;
 
-export type HardwareItem = {
+export type ShopProduct = {
   id: string;
   envKey: string;
   /** Older env name, still accepted so existing Stripe setup keeps working. */
   fallbackEnvKey?: string;
   title: string;
   blurb: string;
-  defaultQty: number;
 };
 
-export const hardwareItems: HardwareItem[] = [
+export const shopProducts: ShopProduct[] = [
   {
     id: "desk",
     envKey: "STRIPE_PRICE_DESK_SET",
     fallbackEnvKey: "STRIPE_PRICE_CLASSROOM_KIT",
     title: "Desk set",
     blurb: "A camera, a desk screen, and a battery pack. One student, one desk.",
-    defaultQty: 1,
   },
   {
     id: "camera",
     envKey: "STRIPE_PRICE_EXTRA_CAMERA",
     title: "Extra camera",
     blurb: "For another board or poster in the same room.",
-    defaultQty: 0,
   },
   {
     id: "screen",
     envKey: "STRIPE_PRICE_EXTRA_SCREEN",
     title: "Extra screen",
     blurb: "For another student in the same room.",
-    defaultQty: 0,
   },
 ];
 
-export function priceEnvKeys(item: HardwareItem): string[] {
-  return item.fallbackEnvKey
-    ? [item.envKey, item.fallbackEnvKey]
-    : [item.envKey];
+export function getProduct(id: string): ShopProduct | undefined {
+  return shopProducts.find((product) => product.id === id);
+}
+
+export function priceEnvKeys(product: ShopProduct): string[] {
+  return product.fallbackEnvKey
+    ? [product.envKey, product.fallbackEnvKey]
+    : [product.envKey];
 }

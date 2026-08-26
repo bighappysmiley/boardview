@@ -64,8 +64,8 @@ export default function Home() {
         </p>
         <div className="mt-10 flex flex-wrap gap-3">
           <ButtonLink href="/signup">Get started</ButtonLink>
-          <ButtonLink href="/pricing" variant="secondary">
-            See kits
+          <ButtonLink href="/shop" variant="secondary">
+            Shop
           </ButtonLink>
         </div>
       </Section>
@@ -122,8 +122,8 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <ButtonLink href="/signup">Get started</ButtonLink>
-            <ButtonLink href="/pricing" variant="secondary">
-              See kits
+            <ButtonLink href="/shop" variant="secondary">
+              Shop
             </ButtonLink>
           </div>
         </div>

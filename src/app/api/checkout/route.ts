@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import {
-  hardwareItems,
-  MAX_QTY,
-  priceEnvKeys,
-} from "@/lib/hardwareKits";
+import { getProduct, MAX_QTY, priceEnvKeys } from "@/lib/shop";
 
 type OrderLine = { id?: string; quantity?: unknown };
 
@@ -24,14 +20,17 @@ export async function POST(request: Request) {
   const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
   for (const line of requested) {
-    const item = hardwareItems.find((entry) => entry.id === line.id);
+    const product = typeof line.id === "string" ? getProduct(line.id) : undefined;
     const quantity = parseQuantity(line.quantity);
-    if (!item || quantity === null) {
-      return NextResponse.json({ error: "That order doesn't look right." }, { status: 400 });
+    if (!product || quantity === null) {
+      return NextResponse.json(
+        { error: "That order doesn't look right." },
+        { status: 400 }
+      );
     }
     if (quantity === 0) continue;
 
-    const priceId = priceEnvKeys(item)
+    const priceId = priceEnvKeys(product)
       .map((key) => process.env[key])
       .find(Boolean);
 
@@ -50,7 +49,7 @@ export async function POST(request: Request) {
 
   if (lineItems.length === 0) {
     return NextResponse.json(
-      { error: "Choose at least one item." },
+      { error: "Add something to your bag first." },
       { status: 400 }
     );
   }
@@ -72,8 +71,12 @@ export async function POST(request: Request) {
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     line_items: lineItems,
-    success_url: `${origin}/pricing?success=true`,
-    cancel_url: `${origin}/pricing?canceled=true`,
+    shipping_address_collection: {
+      allowed_countries: ["US", "CA", "GB", "AU", "IE", "NZ"],
+    },
+    billing_address_collection: "required",
+    success_url: `${origin}/shop?success=true`,
+    cancel_url: `${origin}/shop?canceled=true`,
   });
 
   return NextResponse.json({ url: session.url });
