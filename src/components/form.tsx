@@ -1,5 +1,5 @@
 const inputClasses =
-  "w-full rounded-xl border border-black/10 bg-white/80 px-4 py-2.5 text-base text-foreground shadow-[inset_0_1px_2px_rgba(15,23,42,0.03)] placeholder:text-muted/60 transition-colors hover:border-black/20 focus-visible:border-accent";
+  "w-full rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-base text-foreground placeholder:text-muted/70 transition-colors hover:border-black/20 focus-visible:border-accent";
 
 export function TextField({
   label,
@@ -31,7 +31,7 @@ export function FormError({ message }: { message: string }) {
   return (
     <p
       role="alert"
-      className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+      className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-800"
     >
       {message}
     </p>
@@ -40,10 +40,7 @@ export function FormError({ message }: { message: string }) {
 
 export function FormNotice({ message }: { message: string }) {
   return (
-    <p
-      role="status"
-      className="rounded-xl bg-accent-soft px-4 py-3 text-sm font-medium text-accent"
-    >
+    <p role="status" className="rounded-lg bg-accent-soft px-4 py-3 text-sm text-foreground">
       {message}
     </p>
   );

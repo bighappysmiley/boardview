@@ -41,7 +41,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthCard title="Log in" subtitle="Welcome back.">
+    <AuthCard title="Log in">
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && <FormError message={error} />}
         <FormField

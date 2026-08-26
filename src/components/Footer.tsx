@@ -4,14 +4,13 @@ import { Container } from "./layout";
 
 const links = [
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/#multi-camera", label: "Multiple cameras" },
-  { href: "/pricing", label: "Pricing" },
+  { href: "/pricing", label: "Hardware" },
   { href: "/screen/demo", label: "Screen preview" },
 ];
 
 export function Footer() {
   return (
-    <footer className="mt-8 border-t border-black/[.07]">
+    <footer className="mt-8 border-t border-black/10">
       <Container>
         <div className="flex flex-col gap-6 py-10 md:flex-row md:items-center md:justify-between">
           <Logo />

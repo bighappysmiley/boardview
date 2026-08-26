@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/Button";
-import { Card, Section, SectionHeader } from "@/components/layout";
+import { Section, SectionHeader } from "@/components/layout";
 import { FormError } from "@/components/form";
 import { hardwareKits } from "@/lib/hardwareKits";
 
@@ -33,58 +33,48 @@ export default function PricingPage() {
   }
 
   return (
-    <Section className="!pt-10 sm:!pt-14">
+    <Section className="!pt-12 sm:!pt-16">
       <SectionHeader
-        centered
-        title="Pricing"
-        lead="The BoardView software is completely free — sign up and use it with any classroom. Hardware kits are bought once, per room."
+        title="Hardware"
+        lead="The BoardView software is free. Kits are bought once, per room."
       />
 
       {message && (
-        <div className="mx-auto mb-8 max-w-xl">
+        <div className="mb-10 max-w-xl">
           <FormError message={message} />
         </div>
       )}
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-10 sm:grid-cols-2 sm:gap-16">
         {hardwareKits.map((kit) => (
-          <Card key={kit.id} className="flex flex-col">
-            <h2 className="text-lg font-semibold">{kit.title}</h2>
+          <div key={kit.id} className="flex flex-col border-t border-black/10 pt-8">
+            <h2 className="text-xl font-semibold tracking-tight">{kit.title}</h2>
             <p className="mt-2 leading-relaxed text-muted">{kit.blurb}</p>
-            <ul className="mt-6 flex-1 space-y-2.5">
+            <ul className="mt-6 flex-1 space-y-2 text-muted">
               {kit.bullets.map((bullet) => (
-                <li key={bullet} className="flex gap-2.5 text-muted">
-                  <span aria-hidden="true" className="text-accent">
-                    &#10003;
-                  </span>
-                  <span>{bullet}</span>
-                </li>
+                <li key={bullet}>{bullet}</li>
               ))}
             </ul>
             <Button
-              className="mt-7 w-full"
+              className="mt-8 w-full sm:w-auto"
               disabled={loadingKit === kit.id}
               onClick={() => handleBuy(kit.id)}
             >
               {loadingKit === kit.id ? "Redirecting…" : "Buy now"}
             </Button>
-          </Card>
+          </div>
         ))}
       </div>
 
-      <Card className="mt-5">
-        <h2 className="text-lg font-semibold">District &amp; custom orders</h2>
-        <p className="mt-2 max-w-2xl leading-relaxed text-muted">
-          Outfitting an entire district, or need a custom mount? Reach out and
-          we&apos;ll work out the details with you directly.
-        </p>
+      <p className="mt-16 max-w-xl text-muted">
+        Outfitting a district, or need a custom mount?{" "}
         <a
           href="mailto:hello@boardview.org?subject=BoardView%20district%20order"
-          className="mt-5 inline-block font-medium text-accent hover:underline"
+          className="font-medium text-accent hover:underline"
         >
           hello@boardview.org
         </a>
-      </Card>
+      </p>
     </Section>
   );
 }
