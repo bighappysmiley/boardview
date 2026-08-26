@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BoardView — See the board from anywhere in the room",
+  title: "BoardView — The board, at their desk",
   description:
-    "BoardView mirrors a classroom whiteboard or poster onto a small screen at a student's desk, so low-vision students never miss what's on the board.",
+    "BoardView puts the classroom board on a small screen on the student's desk, so students who can't see the board never miss what's written.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -19,7 +19,7 @@ export default function ResetPasswordPage() {
     setError(null);
 
     if (!isSupabaseConfigured) {
-      setError("Password reset isn't configured yet.");
+      setError("We can't reset passwords just yet. Email hello@boardview.org and we'll help.");
       return;
     }
     if (password !== confirm) {
@@ -43,7 +43,7 @@ export default function ResetPasswordPage() {
   if (done) {
     return (
       <AuthCard title="Password updated">
-        <FormNotice message="Taking you to your account…" />
+        <FormNotice message="Taking you to your classrooms…" />
       </AuthCard>
     );
   }

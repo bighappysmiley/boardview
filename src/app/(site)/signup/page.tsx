@@ -21,7 +21,7 @@ export default function SignUpPage() {
 
     if (!isSupabaseConfigured) {
       setError(
-        "Sign-ups aren't configured yet. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+        "We can't sign you up just yet. Email hello@boardview.org and we'll help."
       );
       return;
     }
@@ -48,7 +48,7 @@ export default function SignUpPage() {
   if (submitted) {
     return (
       <AuthCard title="Check your email">
-        <FormNotice message={`We sent a verification link to ${email}. Follow it to activate your account.`} />
+        <FormNotice message={`We sent an email to ${email}. Open it to finish signing up.`} />
         <p className="mt-6 text-sm text-muted">
           Wrong address?{" "}
           <button
@@ -64,8 +64,8 @@ export default function SignUpPage() {
 
   return (
     <AuthCard
-      title="Create your teacher account"
-      subtitle="Free for every classroom."
+      title="Get started"
+      subtitle="Free for your classroom."
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && <FormError message={error} />}
@@ -103,7 +103,7 @@ export default function SignUpPage() {
           onChange={(e) => setPassword(e.target.value)}
         />
         <Button type="submit" disabled={loading} className="w-full">
-          {loading ? "Creating account…" : "Sign up"}
+          {loading ? "Please wait…" : "Get started"}
         </Button>
       </form>
       <p className="mt-6 text-center text-sm text-muted">

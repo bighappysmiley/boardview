@@ -229,8 +229,7 @@ export default function ClassroomPage() {
               <div>
                 <h2 className="text-lg font-semibold">Desk screen</h2>
                 <p className="mt-1 max-w-md text-sm text-muted">
-                  Open this link on the student&apos;s device to pair it with
-                  this room.
+                  Open this on the desk screen so it shows this classroom.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -246,8 +245,8 @@ export default function ClassroomPage() {
             <div className="mt-10">
               <h2 className="text-lg font-semibold">Cameras</h2>
               <p className="mt-1 text-sm text-muted">
-                One per thing the student needs to see. Next view cycles them
-                in this order.
+                One for each board or poster. Next view walks through them in
+                this order.
               </p>
 
               <ul className="mt-6 divide-y divide-black/10 border-y border-black/10">
@@ -285,19 +284,19 @@ export default function ClassroomPage() {
                         />
                         <details className="mt-3" open={Boolean(camera.stream_url)}>
                           <summary className="cursor-pointer text-sm text-muted hover:text-foreground">
-                            Camera address
+                            Camera link
                           </summary>
                           <label
                             className="sr-only"
                             htmlFor={`url-${camera.id}`}
                           >
-                            Camera address for {camera.label}
+                            Camera link for {camera.label}
                           </label>
                           <BareInput
                             id={`url-${camera.id}`}
                             type="url"
                             className="mt-2"
-                            placeholder="https://"
+                            placeholder="Paste the camera link"
                             value={camera.stream_url ?? ""}
                             onChange={(e) =>
                               setCameras((current) =>
@@ -315,8 +314,8 @@ export default function ClassroomPage() {
                             }
                           />
                           <p className="mt-2 text-sm text-muted">
-                            The address this camera streams to. Leave blank
-                            until the hardware is set up.
+                            Only needed after the camera is installed. Leave
+                            blank until then.
                           </p>
                         </details>
                       </div>
@@ -363,7 +362,7 @@ export default function ClassroomPage() {
                   maxLength={80}
                 />
                 <Button type="submit" disabled={adding} className="shrink-0">
-                  {adding ? "Adding…" : "Add a view"}
+                  {adding ? "Adding…" : "Add a camera"}
                 </Button>
               </form>
             </div>

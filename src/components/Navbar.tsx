@@ -9,7 +9,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 const links = [
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/pricing", label: "Hardware" },
+  { href: "/pricing", label: "Kits" },
 ];
 
 export function Navbar() {
@@ -66,7 +66,7 @@ export function Navbar() {
                 >
                   Log in
                 </Link>
-                <ButtonLink href="/signup">Sign up</ButtonLink>
+                <ButtonLink href="/signup">Get started</ButtonLink>
               </>
             )}
           </div>

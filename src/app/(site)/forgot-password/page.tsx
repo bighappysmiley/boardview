@@ -17,7 +17,7 @@ export default function ForgotPasswordPage() {
     setError(null);
 
     if (!isSupabaseConfigured) {
-      setError("Password reset isn't configured yet.");
+      setError("We can't reset passwords just yet. Email hello@boardview.org and we'll help.");
       return;
     }
 

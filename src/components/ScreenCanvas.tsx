@@ -135,7 +135,7 @@ function PlaceholderFeed({
         <span
           className={`${compact ? "text-[0.7rem]" : "text-sm"} text-white/45`}
         >
-          {label ? `${label} — no feed yet` : "No feed yet"}
+          {label ? `${label} isn't on yet` : "The camera isn't on yet"}
         </span>
       </div>
     </div>

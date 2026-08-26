@@ -5,17 +5,16 @@ const system = [
   {
     term: "Camera",
     detail:
-      "Mounts on the ceiling or wall, pointed at a whiteboard, a second board, or a poster.",
+      "Goes on the ceiling or wall, facing the board, a second board, or a poster.",
   },
   {
     term: "Desk screen",
-    detail:
-      "Sits on the student's desk. It shows the board. It runs no other apps.",
+    detail: "A small screen on the student's desk. It only shows the board.",
   },
   {
-    term: "Teacher controls",
+    term: "Your computer",
     detail:
-      "From your computer you name the views, set their order, and black the screen out when the board is not part of the lesson.",
+      "Name each view, change the order, and hide the board when it isn't part of the lesson.",
   },
 ];
 
@@ -24,8 +23,8 @@ const steps = [
     term: "1",
     detail: (
       <>
-        <span className="font-medium text-foreground">Mount the cameras.</span>{" "}
-        Point one at each thing the student needs to see.
+        <span className="font-medium text-foreground">Put up the cameras.</span>{" "}
+        Point one at each board or poster the student needs to see.
       </>
     ),
   },
@@ -33,8 +32,9 @@ const steps = [
     term: "2",
     detail: (
       <>
-        <span className="font-medium text-foreground">Name the views.</span>{" "}
-        Give each camera a name the student will recognise.
+        <span className="font-medium text-foreground">Give them names.</span>{" "}
+        Front board, side board, the poster — whatever the student will
+        recognise.
       </>
     ),
   },
@@ -42,9 +42,8 @@ const steps = [
     term: "3",
     detail: (
       <>
-        <span className="font-medium text-foreground">They pick their view.</span>{" "}
-        The desk screen shows one camera at a time. Next view moves to the next
-        one.
+        <span className="font-medium text-foreground">They switch views.</span>{" "}
+        The desk screen shows one at a time. Next view goes to the next camera.
       </>
     ),
   },
@@ -60,22 +59,21 @@ export default function Home() {
           The board, at their desk.
         </h1>
         <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
-          For students who cannot see the classroom board — because of low
-          vision, or because they sit too far away. A camera on the board. A
-          screen on the desk.
+          When a student can&apos;t see the board — low vision, or the back of
+          the room — BoardView puts it on a small screen on their desk.
         </p>
         <div className="mt-10 flex flex-wrap gap-3">
-          <ButtonLink href="/signup">Create an account</ButtonLink>
+          <ButtonLink href="/signup">Get started</ButtonLink>
           <ButtonLink href="/pricing" variant="secondary">
-            Hardware
+            See kits
           </ButtonLink>
         </div>
       </Section>
 
       <Section>
         <SectionHeader
-          title="The system"
-          lead="Two pieces of hardware, and the controls on your computer. Nothing else on the desk."
+          title="What you get"
+          lead="A camera, a desk screen, and controls on your computer. Nothing else on the desk."
         />
         <SpecRows items={system} />
       </Section>
@@ -83,7 +81,7 @@ export default function Home() {
       <Section id="how-it-works">
         <SectionHeader
           title="How it works"
-          lead="Set up once. The student uses one button."
+          lead="A few minutes to set up. After that, the student presses one button."
         />
         <SpecRows items={steps} />
       </Section>
@@ -91,7 +89,7 @@ export default function Home() {
       <Section id="multi-camera">
         <SectionHeader
           title="As many views as the room needs"
-          lead="A lesson does not stay on one board. Add a camera for each surface. The student moves between them with one button."
+          lead="Lessons don't stay on one board. Add a camera for each surface. The student moves between them with one button."
         />
         <ul className="max-w-md border-t border-black/10">
           {views.map((label, i) => (
@@ -108,8 +106,8 @@ export default function Home() {
 
       <Section>
         <SectionHeader
-          title="Black out when the board is not needed"
-          lead="From your account you hide the feed instantly. The screen keeps the time and the BoardView name — nothing else."
+          title="Hide the board when it isn't needed"
+          lead="From your computer you can hide it at once. The screen keeps the time and the BoardView name — nothing else."
         />
       </Section>
 
@@ -119,12 +117,13 @@ export default function Home() {
             Free for every classroom
           </h2>
           <p className="mt-3 text-lg leading-relaxed text-muted">
-            The software is free. Hardware is bought once, per room.
+            You don&apos;t pay to use BoardView. You buy the camera and screen
+            once, for each room.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/signup">Create an account</ButtonLink>
+            <ButtonLink href="/signup">Get started</ButtonLink>
             <ButtonLink href="/pricing" variant="secondary">
-              Hardware
+              See kits
             </ButtonLink>
           </div>
         </div>

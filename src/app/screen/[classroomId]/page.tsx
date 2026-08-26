@@ -41,7 +41,7 @@ export default function ScreenPage() {
     ]).then(([classroomRes, camerasRes]) => {
       if (!active) return;
       if (classroomRes.error) {
-        setError("This screen isn't paired to a classroom yet.");
+        setError("This screen isn't connected to a classroom yet.");
         setLoading(false);
         return;
       }
@@ -115,13 +115,13 @@ export default function ScreenPage() {
     <div className="relative h-screen w-screen overflow-hidden bg-screen">
       {loading ? (
         <div className="flex h-full items-center justify-center text-sm text-white/50">
-          Connecting…
+          One moment…
         </div>
       ) : error ? (
         <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
           <p className="text-white/70">{error}</p>
           <Link href="/account" className="text-sm font-medium text-white/50 underline">
-            Open the teacher controls
+            Open the classroom
           </Link>
         </div>
       ) : (

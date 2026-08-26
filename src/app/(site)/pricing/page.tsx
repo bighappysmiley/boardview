@@ -35,8 +35,8 @@ export default function PricingPage() {
   return (
     <Section className="!pt-20 sm:!pt-28">
       <SectionHeader
-        title="Hardware"
-        lead="Software is included, and free. Kits are bought once, per room. Price is confirmed at checkout."
+        title="Kits"
+        lead="You buy them once, for each room. Using BoardView doesn't cost extra."
       />
 
       {message && (
@@ -61,14 +61,14 @@ export default function PricingPage() {
               disabled={loadingKit === kit.id}
               onClick={() => handleBuy(kit.id)}
             >
-              {loadingKit === kit.id ? "Redirecting…" : "Order"}
+              {loadingKit === kit.id ? "Please wait…" : "Order"}
             </Button>
           </div>
         ))}
       </div>
 
       <p className="mt-20 max-w-xl text-muted">
-        Outfitting a district, or need a custom mount?{" "}
+        Outfitting a whole district, or need a special mount? Write to{" "}
         <a
           href="mailto:hello@boardview.org?subject=BoardView%20district%20order"
           className="font-medium text-accent hover:underline"

@@ -11,7 +11,7 @@ export const hardwareKits: HardwareKit[] = [
     id: "classroom",
     envKey: "STRIPE_PRICE_CLASSROOM_KIT",
     title: "Classroom kit",
-    blurb: "One camera and one desk screen.",
+    blurb: "Everything for one desk.",
     bullets: [
       "Ceiling or wall-mounted camera",
       "One desk screen",
@@ -22,11 +22,11 @@ export const hardwareKits: HardwareKit[] = [
     id: "school",
     envKey: "STRIPE_PRICE_SCHOOL_BUNDLE",
     title: "School bundle",
-    blurb: "Five kits for classrooms across a school.",
+    blurb: "Five classrooms, ready to go.",
     bullets: [
-      "Five camera and screen kits",
-      "Shared teacher accounts",
-      "Priority support",
+      "Five cameras and five desk screens",
+      "For teachers across the school",
+      "We'll help you get set up",
     ],
   },
 ];

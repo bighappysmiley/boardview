@@ -140,7 +140,7 @@ export default function AccountPage() {
         <div className="mt-10 border-t border-black/10">
           {classrooms.length === 0 ? (
             <p className="py-8 text-muted">
-              No classrooms yet. Add one for each room you&apos;re setting up.
+              No classrooms yet. Add one for each room you teach in.
             </p>
           ) : (
             <ul>
