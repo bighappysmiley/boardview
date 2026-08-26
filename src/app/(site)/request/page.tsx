@@ -45,7 +45,7 @@ export default function RequestPage() {
     };
   }, [user]);
 
-  if (!isSupabaseConfigured) return <SetupNotice what="Requests" />;
+  if (!isSupabaseConfigured) return <SetupNotice what="Request BoardView" />;
 
   if (loading) {
     return (
