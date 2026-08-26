@@ -105,6 +105,14 @@ export default function AccountPage() {
               Classrooms
             </h1>
             <p className="mt-1 text-muted">{user?.email}</p>
+            <p className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+              <Link href="/request" className="text-accent hover:underline">
+                Request BoardView
+              </Link>
+              <Link href="/account/help" className="text-accent hover:underline">
+                Support
+              </Link>
+            </p>
           </div>
           <Button variant="ghost" onClick={handleSignOut}>
             Sign out

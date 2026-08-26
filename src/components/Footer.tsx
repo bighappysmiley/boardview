@@ -4,7 +4,8 @@ import { Container } from "./layout";
 
 const links = [
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/shop", label: "Shop" },
+  { href: "/request", label: "Request" },
+  { href: "/account/help", label: "Support" },
 ];
 
 export function Footer() {

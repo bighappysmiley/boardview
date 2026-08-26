@@ -32,7 +32,7 @@ export default function SignUpPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/request`,
         data: { full_name: fullName, school },
       },
     });
@@ -64,8 +64,8 @@ export default function SignUpPage() {
 
   return (
     <AuthCard
-      title="Get started"
-      subtitle="Free for your classroom."
+      title="Create an account"
+      subtitle="After that you can request a classroom trial or hardware, and reach us for support."
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && <FormError message={error} />}
@@ -103,7 +103,7 @@ export default function SignUpPage() {
           onChange={(e) => setPassword(e.target.value)}
         />
         <Button type="submit" disabled={loading} className="w-full">
-          {loading ? "Please wait…" : "Get started"}
+          {loading ? "Please wait…" : "Create an account"}
         </Button>
       </form>
       <p className="mt-6 text-center text-sm text-muted">
