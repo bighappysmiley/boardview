@@ -1,91 +1,109 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f6fb;
-  --background-alt: #eef1f8;
-  --foreground: #14181f;
-  --muted: #545b6b;
+  --background: #f5f7fb;
+  --foreground: #10141b;
+  --muted: #5b6373;
   --surface: 255 255 255;
-  --border: 15 23 42;
+  --hairline: 15 23 42;
   --accent: #1d4ed8;
-  --accent-soft: #e8edfc;
+  --accent-hover: #1740b4;
+  --accent-soft: #e9eefc;
   --accent-contrast: #ffffff;
-  --focus-ring: #1d4ed8;
+  --screen: #0b0d12;
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-background-alt: var(--background-alt);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-accent-contrast: var(--accent-contrast);
+  --color-screen: var(--screen);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-* {
-  border-color: rgb(var(--border) / 0.08);
+/*
+ * Base size lives on <html> so Tailwind's rem-based type AND spacing scales
+ * stay locked to each other. Slightly larger than the 16px default, since
+ * this product is built for people who have trouble reading small text.
+ */
+html {
+  font-size: 17px;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
-html {
-  scroll-behavior: smooth;
+* {
+  border-color: rgb(var(--hairline) / 0.09);
+}
+
+body {
+  background: var(--background);
+  background-image:
+    radial-gradient(55rem 38rem at 88% -12%, rgba(29, 78, 216, 0.09), transparent 62%),
+    radial-gradient(45rem 32rem at -12% 14%, rgba(56, 189, 248, 0.1), transparent 58%);
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tighter tracking on large display type, the way Apple/Google set headlines. */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.021em;
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
-  * {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
 
-body {
-  background: var(--background);
-  background-image:
-    radial-gradient(60rem 40rem at 85% -10%, rgba(29, 78, 216, 0.10), transparent 60%),
-    radial-gradient(50rem 34rem at -10% 20%, rgba(56, 189, 248, 0.12), transparent 55%);
-  background-attachment: fixed;
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
-  font-size: 18px;
-}
-
-:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
 .glass-panel {
-  background: rgb(var(--surface) / 0.72);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid rgb(255 255 255 / 0.6);
+  background: rgb(var(--surface) / 0.7);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid rgb(255 255 255 / 0.65);
   box-shadow:
-    0 1px 1px rgba(15, 23, 42, 0.03),
-    0 12px 40px -12px rgba(15, 23, 42, 0.18);
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 14px 40px -16px rgba(15, 23, 42, 0.2);
 }
 
 .glass-panel-solid {
-  background: rgb(var(--surface) / 0.92);
-  border: 1px solid rgb(255 255 255 / 0.7);
+  background: rgb(var(--surface) / 0.94);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid rgb(255 255 255 / 0.72);
   box-shadow:
-    0 1px 1px rgba(15, 23, 42, 0.03),
-    0 12px 40px -12px rgba(15, 23, 42, 0.16);
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 14px 40px -16px rgba(15, 23, 42, 0.18);
 }
 
 .skip-link {
   position: absolute;
-  left: 1rem;
-  top: -3rem;
+  left: 1.5rem;
+  top: -4rem;
   z-index: 100;
   background: var(--accent);
-  color: white;
+  color: #fff;
   padding: 0.75rem 1.25rem;
   border-radius: 0.75rem;
   font-weight: 600;
@@ -93,5 +111,5 @@ body {
 }
 
 .skip-link:focus {
-  top: 1rem;
+  top: 1.5rem;
 }

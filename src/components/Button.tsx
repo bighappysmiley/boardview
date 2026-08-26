@@ -1,16 +1,16 @@
 import Link from "next/link";
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type Variant = "primary" | "secondary" | "ghost";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-base font-medium transition-colors focus-visible:outline-none disabled:opacity-50 disabled:pointer-events-none";
+  "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[0.95rem] font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-accent-contrast hover:bg-[#1741b8]",
+  primary: "bg-accent text-accent-contrast hover:bg-[var(--accent-hover)]",
   secondary:
-    "glass-panel-solid text-foreground hover:bg-white",
-  ghost: "text-foreground hover:bg-black/[.04]",
+    "border border-black/[.09] bg-white/85 text-foreground hover:bg-white",
+  ghost: "text-muted hover:bg-black/[.04] hover:text-foreground",
 };
 
 export function Button({
@@ -19,10 +19,7 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   return (
-    <button
-      className={`${base} ${variants[variant]} ${className}`}
-      {...props}
-    />
+    <button className={`${base} ${variants[variant]} ${className}`} {...props} />
   );
 }
 
@@ -35,7 +32,7 @@ export function ButtonLink({
   href: string;
   variant?: Variant;
   className?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <Link href={href} className={`${base} ${variants[variant]} ${className}`}>
