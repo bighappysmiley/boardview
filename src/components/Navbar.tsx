@@ -9,8 +9,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 const links = [
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/#multi-camera", label: "Multiple cameras" },
-  { href: "/pricing", label: "Pricing" },
+  { href: "/pricing", label: "Hardware" },
 ];
 
 export function Navbar() {
@@ -35,13 +34,10 @@ export function Navbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 pt-4">
+    <header className="sticky top-0 z-50 border-b border-black/10 bg-background">
       <Container>
-        <nav
-          aria-label="Primary"
-          className="glass-panel flex items-center justify-between gap-4 rounded-2xl py-2.5 pl-5 pr-2.5"
-        >
-          <Link href="/" className="shrink-0 rounded-lg py-1">
+        <nav aria-label="Primary" className="flex h-14 items-center justify-between gap-4">
+          <Link href="/" className="shrink-0 rounded-md py-1">
             <Logo />
           </Link>
 
@@ -50,23 +46,23 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-[0.95rem] font-medium text-muted transition-colors hover:text-foreground"
+                className="text-[0.95rem] text-muted transition-colors hover:text-foreground"
               >
                 {link.label}
               </Link>
             ))}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-3">
             {signedIn ? (
               <ButtonLink href="/account" variant="secondary">
-                My classrooms
+                Classrooms
               </ButtonLink>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className="hidden rounded-full px-3 py-2 text-[0.95rem] font-medium text-muted transition-colors hover:text-foreground sm:block"
+                  className="hidden text-[0.95rem] text-muted transition-colors hover:text-foreground sm:block"
                 >
                   Log in
                 </Link>

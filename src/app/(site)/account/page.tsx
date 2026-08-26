@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/Button";
-import { Card, Container } from "@/components/layout";
+import { Container } from "@/components/layout";
 import { BareInput, FormError } from "@/components/form";
 import { SetupNotice } from "@/components/SetupNotice";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -96,88 +96,85 @@ export default function AccountPage() {
     );
   }
 
-  const displayName = user?.user_metadata?.full_name as string | undefined;
-
   return (
     <div className="py-16 sm:py-20">
       <Container size="narrow">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold sm:text-4xl">
-              {displayName ? `Hi, ${displayName}` : "Your classrooms"}
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              Classrooms
             </h1>
-            <p className="mt-2 text-muted">{user?.email}</p>
+            <p className="mt-1 text-muted">{user?.email}</p>
           </div>
-          <Button variant="secondary" onClick={handleSignOut}>
+          <Button variant="ghost" onClick={handleSignOut}>
             Sign out
           </Button>
         </div>
 
-        <div className="mt-10 space-y-4">
-          {classrooms.length === 0 && (
-            <Card>
-              <h2 className="text-lg font-semibold">No classrooms yet</h2>
-              <p className="mt-2 text-muted">
-                Create one for each room you&apos;re setting up. A classroom
-                holds every camera in that room — the front board, a second
-                board, a poster — and the screen cycles between them.
-              </p>
-            </Card>
-          )}
+        {error && (
+          <div className="mt-6">
+            <FormError message={error} />
+          </div>
+        )}
 
-          {classrooms.map((classroom) => {
-            const cameraCount = classroom.cameras?.[0]?.count ?? 0;
-            return (
-              <Card key={classroom.id} className="!py-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <h2 className="truncate text-lg font-semibold">
-                      {classroom.name}
-                    </h2>
-                    <p className="mt-1 text-sm text-muted">
-                      {cameraCount} {cameraCount === 1 ? "camera" : "cameras"}
-                      {classroom.blacked_out && " · screen blacked out"}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/account/classrooms/${classroom.id}`}
-                    className="shrink-0 text-[0.95rem] font-medium text-accent hover:underline"
+        <form
+          onSubmit={createClassroom}
+          className="mt-10 flex flex-col gap-3 sm:flex-row"
+        >
+          <label className="sr-only" htmlFor="classroom-name">
+            Classroom name
+          </label>
+          <BareInput
+            id="classroom-name"
+            placeholder="Room 214 — Biology"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            required
+            maxLength={80}
+          />
+          <Button type="submit" disabled={creating} className="shrink-0">
+            {creating ? "Adding…" : "Add classroom"}
+          </Button>
+        </form>
+
+        <div className="mt-10 border-t border-black/10">
+          {classrooms.length === 0 ? (
+            <p className="py-8 text-muted">
+              No classrooms yet. Add one for each room you&apos;re setting up.
+            </p>
+          ) : (
+            <ul>
+              {classrooms.map((classroom) => {
+                const cameraCount = classroom.cameras?.[0]?.count ?? 0;
+                return (
+                  <li
+                    key={classroom.id}
+                    className="flex flex-wrap items-center justify-between gap-3 border-b border-black/10 py-4"
                   >
-                    Manage
-                  </Link>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-
-        <Card className="mt-8">
-          <h2 className="text-lg font-semibold">Add a classroom</h2>
-          <form
-            onSubmit={createClassroom}
-            className="mt-4 flex flex-col gap-3 sm:flex-row"
-          >
-            <label className="sr-only" htmlFor="classroom-name">
-              Classroom name
-            </label>
-            <BareInput
-              id="classroom-name"
-              placeholder="Room 214 — Biology"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              required
-              maxLength={80}
-            />
-            <Button type="submit" disabled={creating} className="shrink-0">
-              {creating ? "Adding…" : "Add classroom"}
-            </Button>
-          </form>
-          {error && (
-            <div className="mt-4">
-              <FormError message={error} />
-            </div>
+                    <div className="min-w-0">
+                      <Link
+                        href={`/account/classrooms/${classroom.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {classroom.name}
+                      </Link>
+                      <p className="mt-0.5 text-sm text-muted">
+                        {cameraCount} {cameraCount === 1 ? "camera" : "cameras"}
+                        {classroom.blacked_out ? " · blacked out" : ""}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/account/classrooms/${classroom.id}`}
+                      className="shrink-0 text-sm text-accent hover:underline"
+                    >
+                      Open
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           )}
-        </Card>
+        </div>
       </Container>
     </div>
   );

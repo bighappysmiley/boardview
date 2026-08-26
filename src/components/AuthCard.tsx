@@ -12,8 +12,8 @@ export function AuthCard({
   return (
     <div className="py-16 sm:py-20">
       <Container size="form">
-        <Card className="!p-8 sm:!p-9">
-          <h1 className="text-2xl font-semibold">{title}</h1>
+        <Card>
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           {subtitle && <p className="mt-2 text-muted">{subtitle}</p>}
           <div className="mt-7">{children}</div>
         </Card>

@@ -4,12 +4,12 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 type Variant = "primary" | "secondary" | "ghost";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-[0.95rem] font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none";
+  "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[0.95rem] font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-accent-contrast hover:bg-[var(--accent-hover)]",
+  primary: "bg-foreground text-white hover:bg-black",
   secondary:
-    "border border-black/[.09] bg-white/85 text-foreground hover:bg-white",
+    "border border-black/10 bg-white text-foreground hover:bg-black/[.03]",
   ghost: "text-muted hover:bg-black/[.04] hover:text-foreground",
 };
 

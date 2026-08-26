@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Button } from "@/components/Button";
-import { Card, Container } from "@/components/layout";
+import { Button, ButtonLink } from "@/components/Button";
+import { Container } from "@/components/layout";
 import { BareInput, FormError } from "@/components/form";
 import { SetupNotice } from "@/components/SetupNotice";
 import { ScreenCanvas, DeviceFrame } from "@/components/ScreenCanvas";
@@ -25,6 +25,7 @@ export default function ClassroomPage() {
   const [newLabel, setNewLabel] = useState("");
   const [adding, setAdding] = useState(false);
   const [preview, setPreview] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   const loadCameras = useCallback(async () => {
     const supabase = createClient();
@@ -107,7 +108,6 @@ export default function ClassroomPage() {
     setCameras(remaining);
     const supabase = createClient();
     await supabase.from("cameras").delete().eq("id", id);
-    // Close the gap so positions stay 0..n-1.
     await Promise.all(
       remaining.map((c, i) =>
         supabase.from("cameras").update({ position: i }).eq("id", c.id)
@@ -145,6 +145,17 @@ export default function ClassroomPage() {
     if (updateError) setError(updateError.message);
   }
 
+  async function copyScreenLink() {
+    const url = `${window.location.origin}/screen/${classroomId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Couldn't copy the link. Open it from the button instead.");
+    }
+  }
+
   if (!isSupabaseConfigured) return <SetupNotice what="Classroom controls" />;
 
   if (loading) {
@@ -161,15 +172,13 @@ export default function ClassroomPage() {
     return (
       <div className="py-16 sm:py-20">
         <Container size="wide">
-          <Card>
-            <p className="text-muted">{error ?? "Classroom not found."}</p>
-            <Link
-              href="/account"
-              className="mt-4 inline-block font-medium text-accent hover:underline"
-            >
-              Back to your classrooms
-            </Link>
-          </Card>
+          <p className="text-muted">{error ?? "Classroom not found."}</p>
+          <Link
+            href="/account"
+            className="mt-4 inline-block font-medium text-accent hover:underline"
+          >
+            Back to classrooms
+          </Link>
         </Container>
       </div>
     );
@@ -183,29 +192,30 @@ export default function ClassroomPage() {
     : previewCamera
       ? "live"
       : "boot";
+  const screenPath = `/screen/${classroom.id}`;
 
   return (
     <div className="py-16 sm:py-20">
       <Container size="wide">
         <Link
           href="/account"
-          className="text-sm font-medium text-muted hover:text-foreground"
+          className="text-sm text-muted hover:text-foreground"
         >
-          ← All classrooms
+          All classrooms
         </Link>
-        <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">
-          {classroom.name}
-        </h1>
-        <p className="mt-2 text-muted">
-          Open{" "}
-          <Link
-            href={`/screen/${classroom.id}`}
-            className="font-medium text-accent hover:underline"
+
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+            {classroom.name}
+          </h1>
+          <Button
+            variant={classroom.blacked_out ? "primary" : "secondary"}
+            onClick={toggleBlackout}
+            aria-pressed={classroom.blacked_out}
           >
-            the screen view
-          </Link>{" "}
-          on the student&apos;s device to pair it with this room.
-        </p>
+            {classroom.blacked_out ? "Show the board" : "Black out"}
+          </Button>
+        </div>
 
         {error && (
           <div className="mt-6">
@@ -213,83 +223,81 @@ export default function ClassroomPage() {
           </div>
         )}
 
-        <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="space-y-6">
-            {/* Blackout */}
-            <Card>
-              <h2 className="text-lg font-semibold">Screen blackout</h2>
-              <p className="mt-1 max-w-md text-sm text-muted">
-                Hides the board instantly. The screen keeps showing only the
-                time and the BoardView name.
-              </p>
-              <Button
-                variant={classroom.blacked_out ? "primary" : "secondary"}
-                onClick={toggleBlackout}
-                aria-pressed={classroom.blacked_out}
-                className="mt-5"
-              >
-                {classroom.blacked_out ? "Show the board" : "Black out"}
-              </Button>
-            </Card>
+        <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_18.5rem] lg:gap-16">
+          <div>
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/10 pb-8">
+              <div>
+                <h2 className="text-lg font-semibold">Desk screen</h2>
+                <p className="mt-1 max-w-md text-sm text-muted">
+                  Open this link on the student&apos;s device to pair it with
+                  this room.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={copyScreenLink}>
+                  {copied ? "Copied" : "Copy link"}
+                </Button>
+                <ButtonLink href={screenPath} variant="secondary">
+                  Open
+                </ButtonLink>
+              </div>
+            </div>
 
-            {/* Cameras */}
-            <Card>
+            <div className="mt-10">
               <h2 className="text-lg font-semibold">Cameras</h2>
               <p className="mt-1 text-sm text-muted">
-                Add one per thing the student needs to see. The screen&apos;s
-                &ldquo;Next view&rdquo; button cycles through them in this
-                order.
+                One per thing the student needs to see. Next view cycles them
+                in this order.
               </p>
 
-              <ul className="mt-6 space-y-4">
+              <ul className="mt-6 divide-y divide-black/10 border-y border-black/10">
                 {cameras.map((camera, i) => (
-                  <li
-                    key={camera.id}
-                    className="rounded-2xl border border-black/[.07] bg-white/60 p-4"
-                  >
+                  <li key={camera.id} className="py-5">
                     <div className="flex items-start gap-3">
-                      <span className="mt-2.5 w-4 shrink-0 font-mono text-sm text-muted">
+                      <span className="mt-2.5 w-4 shrink-0 text-sm text-muted">
                         {i + 1}
                       </span>
-                      <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-[1.15fr_1fr]">
-                        <div>
-                          <label
-                            className="sr-only"
-                            htmlFor={`label-${camera.id}`}
-                          >
-                            Camera name
-                          </label>
-                          <BareInput
-                            id={`label-${camera.id}`}
-                            value={camera.label}
-                            maxLength={80}
-                            onChange={(e) =>
-                              setCameras((current) =>
-                                current.map((c) =>
-                                  c.id === camera.id
-                                    ? { ...c, label: e.target.value }
-                                    : c
-                                )
+                      <div className="min-w-0 flex-1">
+                        <label
+                          className="sr-only"
+                          htmlFor={`label-${camera.id}`}
+                        >
+                          Camera name
+                        </label>
+                        <BareInput
+                          id={`label-${camera.id}`}
+                          value={camera.label}
+                          maxLength={80}
+                          onChange={(e) =>
+                            setCameras((current) =>
+                              current.map((c) =>
+                                c.id === camera.id
+                                  ? { ...c, label: e.target.value }
+                                  : c
                               )
-                            }
-                            onBlur={(e) =>
-                              updateCamera(camera.id, {
-                                label: e.target.value.trim() || "Camera",
-                              })
-                            }
-                          />
-                        </div>
-                        <div>
+                            )
+                          }
+                          onBlur={(e) =>
+                            updateCamera(camera.id, {
+                              label: e.target.value.trim() || "Camera",
+                            })
+                          }
+                        />
+                        <details className="mt-3" open={Boolean(camera.stream_url)}>
+                          <summary className="cursor-pointer text-sm text-muted hover:text-foreground">
+                            Camera address
+                          </summary>
                           <label
                             className="sr-only"
                             htmlFor={`url-${camera.id}`}
                           >
-                            Stream URL for {camera.label}
+                            Camera address for {camera.label}
                           </label>
                           <BareInput
                             id={`url-${camera.id}`}
                             type="url"
-                            placeholder="Stream URL"
+                            className="mt-2"
+                            placeholder="https://"
                             value={camera.stream_url ?? ""}
                             onChange={(e) =>
                               setCameras((current) =>
@@ -306,7 +314,11 @@ export default function ClassroomPage() {
                               })
                             }
                           />
-                        </div>
+                          <p className="mt-2 text-sm text-muted">
+                            The address this camera streams to. Leave blank
+                            until the hardware is set up.
+                          </p>
+                        </details>
                       </div>
                       <div className="flex shrink-0 gap-1">
                         <IconButton
@@ -351,17 +363,14 @@ export default function ClassroomPage() {
                   maxLength={80}
                 />
                 <Button type="submit" disabled={adding} className="shrink-0">
-                  {adding ? "Adding…" : "Add camera"}
+                  {adding ? "Adding…" : "Add a view"}
                 </Button>
               </form>
-            </Card>
+            </div>
           </div>
 
-          {/* Live preview of exactly what the student sees */}
           <aside className="lg:sticky lg:top-24 lg:self-start">
-            <h2 className="mb-3 text-sm font-medium text-muted">
-              What the student sees
-            </h2>
+            <h2 className="mb-3 text-sm text-muted">What the student sees</h2>
             <DeviceFrame>
               <ScreenCanvas
                 compact
@@ -390,7 +399,7 @@ function IconButton({
       type="button"
       aria-label={label}
       title={label}
-      className="flex h-8 w-8 items-center justify-center rounded-lg border border-black/[.07] bg-white/70 text-muted transition-colors hover:bg-white hover:text-foreground disabled:opacity-35 disabled:hover:bg-white/70"
+      className="flex h-8 w-8 items-center justify-center rounded-md border border-black/10 text-muted transition-colors hover:bg-black/[.03] hover:text-foreground disabled:opacity-35 disabled:hover:bg-transparent"
       {...props}
     >
       {children}

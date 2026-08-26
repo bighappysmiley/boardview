@@ -13,8 +13,6 @@ export function Container({
   className?: string;
   size?: "wide" | "narrow" | "form";
 }) {
-  // Sized in rem against the 17px root, so these stay a comfortable measure
-  // rather than running edge-to-edge on a 1280px screen.
   const widths = {
     wide: "max-w-5xl",
     narrow: "max-w-3xl",
@@ -40,7 +38,10 @@ export function Section({
   id?: string;
 }) {
   return (
-    <section id={id} className={`py-14 sm:py-16 ${id ? "scroll-mt-24" : ""} ${className}`}>
+    <section
+      id={id}
+      className={`py-16 sm:py-20 ${id ? "scroll-mt-24" : ""} ${className}`}
+    >
       <Container size={size}>{children}</Container>
     </section>
   );
@@ -57,11 +58,13 @@ export function SectionHeader({
   centered?: boolean;
 }) {
   return (
-    <div className={`mb-9 ${centered ? "text-center" : ""}`}>
-      <h2 className="text-3xl font-semibold sm:text-4xl">{title}</h2>
+    <div className={`mb-10 ${centered ? "text-center" : ""}`}>
+      <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+        {title}
+      </h2>
       {lead && (
         <p
-          className={`mt-3 max-w-2xl text-lg leading-relaxed text-muted ${
+          className={`mt-3 max-w-xl text-lg leading-relaxed text-muted ${
             centered ? "mx-auto" : ""
           }`}
         >
@@ -76,16 +79,14 @@ export function SectionHeader({
 export function Card({
   children,
   className = "",
-  solid = false,
 }: {
   children: ReactNode;
   className?: string;
+  /** @deprecated Hairline panels only; kept so existing call sites compile. */
   solid?: boolean;
 }) {
   return (
-    <div
-      className={`${solid ? "glass-panel-solid" : "glass-panel"} rounded-3xl p-7 sm:p-8 ${className}`}
-    >
+    <div className={`rounded-xl border border-black/10 bg-white p-6 ${className}`}>
       {children}
     </div>
   );

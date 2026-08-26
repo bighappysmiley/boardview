@@ -138,7 +138,7 @@ export default function ScreenPage() {
       {/* Discreet way back out for whoever is setting the device up. */}
       <Link
         href="/account"
-        className="absolute bottom-3 left-3 rounded-full px-3 py-1.5 text-xs text-white/25 transition-colors hover:bg-white/10 hover:text-white/80 focus-visible:bg-white/10 focus-visible:text-white"
+        className="absolute bottom-3 left-3 rounded-md px-3 py-1.5 text-xs text-white/25 transition-colors hover:bg-white/10 hover:text-white/80 focus-visible:bg-white/10 focus-visible:text-white"
       >
         Teacher controls
       </Link>

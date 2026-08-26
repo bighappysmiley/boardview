@@ -32,7 +32,6 @@ export function ScreenCanvas({
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-screen text-white">
-      {/* Blackout: nothing but the wordmark and the time. */}
       {mode === "blackout" && (
         <div className={`flex h-full flex-col ${pad}`}>
           <div className={`flex items-start justify-between ${labelSize}`}>
@@ -44,7 +43,6 @@ export function ScreenCanvas({
         </div>
       )}
 
-      {/* Idle: the boot logo, and nothing else. */}
       {mode === "boot" && (
         <div className="flex h-full flex-col items-center justify-center gap-3">
           <LogoMark className={compact ? "h-9 w-9" : "h-12 w-12"} />
@@ -56,7 +54,6 @@ export function ScreenCanvas({
         </div>
       )}
 
-      {/* Live: the framed camera view. */}
       {mode === "live" && (
         <div className="flex h-full flex-col">
           <div className="relative flex-1 overflow-hidden">
@@ -73,7 +70,7 @@ export function ScreenCanvas({
           </div>
 
           <div
-            className={`flex items-center justify-between gap-3 border-t border-white/10 bg-black/40 ${
+            className={`flex items-center justify-between gap-3 border-t border-white/10 bg-black/50 ${
               compact ? "px-4 py-2" : "px-5 py-3"
             }`}
           >
@@ -91,7 +88,7 @@ export function ScreenCanvas({
                 <button
                   type="button"
                   onClick={onNextCamera}
-                  className={`shrink-0 rounded-full bg-white/15 px-4 font-medium text-white transition-colors hover:bg-white/25 ${
+                  className={`shrink-0 rounded-md bg-white/15 px-3 font-medium text-white transition-colors hover:bg-white/25 ${
                     compact ? "py-1 text-xs" : "py-1.5 text-sm"
                   }`}
                 >
@@ -100,7 +97,7 @@ export function ScreenCanvas({
               ) : (
                 <span
                   aria-hidden="true"
-                  className={`shrink-0 rounded-full bg-white/15 px-4 font-medium text-white/90 ${
+                  className={`shrink-0 rounded-md bg-white/15 px-3 font-medium text-white/90 ${
                     compact ? "py-1 text-xs" : "py-1.5 text-sm"
                   }`}
                 >
@@ -126,14 +123,14 @@ function PlaceholderFeed({
     <div className="relative h-full w-full bg-[#161a22]">
       <div
         aria-hidden="true"
-        className="absolute inset-0 opacity-[0.16]"
+        className="absolute inset-0 opacity-[0.12]"
         style={{
           backgroundImage:
             "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
           backgroundSize: "22px 22px",
         }}
       />
-      <div className="absolute inset-5 rounded-lg border border-white/25" />
+      <div className="absolute inset-5 rounded border border-white/20" />
       <div className="absolute inset-0 flex items-center justify-center">
         <span
           className={`${compact ? "text-[0.7rem]" : "text-sm"} text-white/45`}
@@ -145,7 +142,7 @@ function PlaceholderFeed({
   );
 }
 
-/** Bezel around a screen, matching the real hardware's proportions. */
+/** Thin dark bezel around a screen, matching the hardware. */
 export function DeviceFrame({
   children,
   className = "",
@@ -154,8 +151,8 @@ export function DeviceFrame({
   className?: string;
 }) {
   return (
-    <div className={`glass-panel rounded-[1.75rem] p-3 ${className}`}>
-      <div className="aspect-[4/3] w-full overflow-hidden rounded-[1.15rem] bg-screen shadow-inner">
+    <div className={`rounded-[1.15rem] bg-[#1d1d1f] p-[5px] ${className}`}>
+      <div className="aspect-[4/3] w-full overflow-hidden rounded-[0.95rem] bg-screen">
         {children}
       </div>
     </div>
