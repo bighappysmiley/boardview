@@ -1,110 +1,116 @@
 import { ButtonLink } from "@/components/Button";
-import { Section, SectionHeader } from "@/components/layout";
-import { ScreenDemo } from "@/components/ScreenDemo";
-import { demoCameras } from "@/lib/demo";
+import { Section, SectionHeader, SpecRows } from "@/components/layout";
+
+const system = [
+  {
+    term: "Camera",
+    detail:
+      "Mounts on the ceiling or wall, pointed at a whiteboard, a second board, or a poster.",
+  },
+  {
+    term: "Desk screen",
+    detail:
+      "Sits on the student's desk. It shows the board. It runs no other apps.",
+  },
+  {
+    term: "Teacher controls",
+    detail:
+      "From your computer you name the views, set their order, and black the screen out when the board is not part of the lesson.",
+  },
+];
 
 const steps = [
   {
-    title: "Mount the cameras",
-    body: "Point one at each thing the student needs to see — the front board, a second board, a poster.",
+    term: "1",
+    detail: (
+      <>
+        <span className="font-medium text-foreground">Mount the cameras.</span>{" "}
+        Point one at each thing the student needs to see.
+      </>
+    ),
   },
   {
-    title: "Name the views",
-    body: "From your computer, give each camera a name the student will recognise.",
+    term: "2",
+    detail: (
+      <>
+        <span className="font-medium text-foreground">Name the views.</span>{" "}
+        Give each camera a name the student will recognise.
+      </>
+    ),
   },
   {
-    title: "They pick their view",
-    body: "The desk screen shows one camera at a time. Next view moves to the next one.",
+    term: "3",
+    detail: (
+      <>
+        <span className="font-medium text-foreground">They pick their view.</span>{" "}
+        The desk screen shows one camera at a time. Next view moves to the next
+        one.
+      </>
+    ),
   },
 ];
+
+const views = ["Front whiteboard", "Side whiteboard", "Poster"];
 
 export default function Home() {
   return (
     <>
-      <Section className="!pt-12 sm:!pt-16">
-        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
-          <div>
-            <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-[3.25rem] lg:leading-[1.08]">
-              The board, at their desk.
-            </h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-              A small camera on the board. A small screen on the student&apos;s
-              desk. The student sees what&apos;s written, from anywhere in the
-              room.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <ButtonLink href="/signup">Create an account</ButtonLink>
-              <ButtonLink href="/pricing" variant="secondary">
-                Get the hardware
-              </ButtonLink>
-            </div>
-          </div>
-
-          <div className="mx-auto w-full max-w-[22rem]">
-            <ScreenDemo />
-            <p className="mt-3 text-center text-sm text-muted">
-              Press <strong className="font-medium text-foreground">Next view</strong>{" "}
-              to switch cameras.
-            </p>
-          </div>
+      <Section className="!pt-20 sm:!pt-28">
+        <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-[3.4rem] lg:leading-[1.08]">
+          The board, at their desk.
+        </h1>
+        <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
+          For students who cannot see the classroom board — because of low
+          vision, or because they sit too far away. A camera on the board. A
+          screen on the desk.
+        </p>
+        <div className="mt-10 flex flex-wrap gap-3">
+          <ButtonLink href="/signup">Create an account</ButtonLink>
+          <ButtonLink href="/pricing" variant="secondary">
+            Hardware
+          </ButtonLink>
         </div>
+      </Section>
+
+      <Section>
+        <SectionHeader
+          title="The system"
+          lead="Two pieces of hardware, and the controls on your computer. Nothing else on the desk."
+        />
+        <SpecRows items={system} />
       </Section>
 
       <Section id="how-it-works">
         <SectionHeader
           title="How it works"
-          lead="Three steps. No extra apps on the desk."
+          lead="Set up once. The student uses one button."
         />
-        <ol className="max-w-2xl space-y-8">
-          {steps.map((item, i) => (
-            <li key={item.title}>
-              <p className="text-sm text-muted">{i + 1}</p>
-              <h3 className="mt-1 text-lg font-semibold">{item.title}</h3>
-              <p className="mt-1.5 leading-relaxed text-muted">{item.body}</p>
-            </li>
-          ))}
-        </ol>
+        <SpecRows items={steps} />
       </Section>
 
       <Section id="multi-camera">
         <SectionHeader
           title="As many views as the room needs"
-          lead="A lesson doesn't stay on one board. Add a camera for each surface; the student moves between them with one button."
+          lead="A lesson does not stay on one board. Add a camera for each surface. The student moves between them with one button."
         />
-        <ul className="max-w-md space-y-3">
-          {demoCameras.map((camera) => (
+        <ul className="max-w-md border-t border-black/10">
+          {views.map((label, i) => (
             <li
-              key={camera.id}
-              className="flex items-baseline justify-between gap-4 border-b border-black/10 py-3"
+              key={label}
+              className="flex items-baseline justify-between gap-4 border-b border-black/10 py-4"
             >
-              <span>{camera.label}</span>
-              <span className="font-mono text-sm text-muted">
-                {camera.position + 1}
-              </span>
+              <span>{label}</span>
+              <span className="text-sm text-muted">{i + 1}</span>
             </li>
           ))}
         </ul>
-        <p className="mt-6 max-w-xl text-muted">
-          Rename them, reorder them, or add another mid-year. The screen
-          updates on its own.
-        </p>
       </Section>
 
       <Section>
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          <div>
-            <SectionHeader
-              title="Black out the screen when the board isn't needed"
-              lead="From your account you can hide the feed instantly. The screen keeps the time and the BoardView name — nothing else."
-            />
-            <ButtonLink href="/screen/demo" variant="secondary">
-              Preview the screen
-            </ButtonLink>
-          </div>
-          <div className="mx-auto w-full max-w-[22rem]">
-            <ScreenDemo mode="blackout" />
-          </div>
-        </div>
+        <SectionHeader
+          title="Black out when the board is not needed"
+          lead="From your account you hide the feed instantly. The screen keeps the time and the BoardView name — nothing else."
+        />
       </Section>
 
       <Section>
@@ -118,7 +124,7 @@ export default function Home() {
           <div className="mt-8 flex flex-wrap gap-3">
             <ButtonLink href="/signup">Create an account</ButtonLink>
             <ButtonLink href="/pricing" variant="secondary">
-              Get the hardware
+              Hardware
             </ButtonLink>
           </div>
         </div>
