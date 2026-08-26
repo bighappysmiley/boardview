@@ -84,7 +84,7 @@ export default function AccountPage() {
     router.push("/");
   }
 
-  if (!isSupabaseConfigured) return <SetupNotice what="Teacher accounts" />;
+  if (!isSupabaseConfigured) return <SetupNotice what="Your classrooms" />;
 
   if (loading) {
     return (

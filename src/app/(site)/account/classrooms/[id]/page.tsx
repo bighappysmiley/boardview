@@ -156,7 +156,7 @@ export default function ClassroomPage() {
     }
   }
 
-  if (!isSupabaseConfigured) return <SetupNotice what="Classroom controls" />;
+  if (!isSupabaseConfigured) return <SetupNotice what="This classroom" />;
 
   if (loading) {
     return (
