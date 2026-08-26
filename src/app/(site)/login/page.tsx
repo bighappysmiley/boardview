@@ -20,7 +20,7 @@ export default function LoginPage() {
 
     if (!isSupabaseConfigured) {
       setError(
-        "Log in isn't configured yet. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+        "We can't log you in just yet. Email hello@boardview.org and we'll help."
       );
       return;
     }
@@ -72,7 +72,7 @@ export default function LoginPage() {
       <p className="mt-6 text-center text-sm text-muted">
         Need an account?{" "}
         <Link href="/signup" className="font-medium text-accent">
-          Sign up
+          Get started
         </Link>
       </p>
     </AuthCard>
