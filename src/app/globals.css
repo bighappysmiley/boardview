@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4f6fb;
+  --background-alt: #eef1f8;
+  --foreground: #14181f;
+  --muted: #545b6b;
+  --surface: 255 255 255;
+  --border: 15 23 42;
+  --accent: #1d4ed8;
+  --accent-soft: #e8edfc;
+  --accent-contrast: #ffffff;
+  --focus-ring: #1d4ed8;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-alt: var(--background-alt);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: rgb(var(--border) / 0.08);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  background: var(--background);
+  background-image:
+    radial-gradient(60rem 40rem at 85% -10%, rgba(29, 78, 216, 0.10), transparent 60%),
+    radial-gradient(50rem 34rem at -10% 20%, rgba(56, 189, 248, 0.12), transparent 55%);
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 18px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.glass-panel {
+  background: rgb(var(--surface) / 0.72);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgb(255 255 255 / 0.6);
+  box-shadow:
+    0 1px 1px rgba(15, 23, 42, 0.03),
+    0 12px 40px -12px rgba(15, 23, 42, 0.18);
+}
+
+.glass-panel-solid {
+  background: rgb(var(--surface) / 0.92);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow:
+    0 1px 1px rgba(15, 23, 42, 0.03),
+    0 12px 40px -12px rgba(15, 23, 42, 0.16);
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  z-index: 100;
+  background: var(--accent);
+  color: white;
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
