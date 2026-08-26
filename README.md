@@ -11,14 +11,34 @@ free on Netlify.
 
 ## What's here so far
 
-- **Landing page** (`/`) — explains the product and how it works.
+- **Landing page** (`/`) — explains the product, with a working interactive
+  mockup of the student screen.
 - **Sign up / log in** (`/signup`, `/login`, `/forgot-password`,
   `/reset-password`) — email + password accounts with email verification,
   backed by [Supabase](https://supabase.com).
-- **Account page** (`/account`) — placeholder for the teacher control panel
-  (camera framing, screen blackout, etc.), which is a future milestone.
+- **Teacher controls** (`/account`, `/account/classrooms/[id]`) — create a
+  classroom, add as many cameras to it as the room needs, rename and reorder
+  them, and black out the screen. A live preview shows exactly what the
+  student is seeing.
+- **Student screen** (`/screen/[classroomId]`) — the dedicated view for the
+  desk device. Shows the BoardView logo when idle, the framed camera view
+  when live, and only the time plus the BoardView name when blacked out.
 - **Pricing / purchase** (`/pricing`) — the software is free; hardware kits
   are bought once via [Stripe](https://stripe.com) Checkout.
+
+## Multiple cameras per classroom
+
+A classroom holds any number of cameras — the front board, a second board, a
+poster on the wall. The screen shows one at a time, and a **Next view**
+button on the screen cycles to the next one in the order the teacher set.
+The <kbd>→</kbd> / <kbd>←</kbd> keys do the same, so a physical button wired
+to the camera box can send a key press instead of needing a touchscreen.
+
+Blackout and camera edits reach the screen over Supabase Realtime, so the
+device updates without anyone touching it.
+
+You can try the screen (with sample cameras, no account needed) at
+[`/screen/demo`](http://localhost:3000/screen/demo).
 
 ## Local setup
 
@@ -37,10 +57,15 @@ Open http://localhost:3000.
 2. In **Project Settings → API**, copy the **Project URL** and **anon public**
    key into `.env.local` as `NEXT_PUBLIC_SUPABASE_URL` and
    `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-3. In **Authentication → URL Configuration**, add your site's URL (and
+3. Open **Database → SQL Editor**, paste in
+   [`supabase/schema.sql`](supabase/schema.sql), and run it. That creates the
+   `classrooms` and `cameras` tables, locks them down with row-level security
+   so a teacher only ever sees their own rooms, and switches on Realtime for
+   the blackout toggle.
+4. In **Authentication → URL Configuration**, add your site's URL (and
    `http://localhost:3000` for local dev) to the redirect allow-list so the
    `/auth/callback` route is permitted.
-4. Email verification is on by default for new Supabase projects — no extra
+5. Email verification is on by default for new Supabase projects — no extra
    setup needed. You can customize the verification email template under
    **Authentication → Email Templates**.
 
@@ -72,11 +97,17 @@ Postgres later without switching providers.
 
 ## Not built yet
 
-- The teacher control dashboard (live camera framing, screen blackout
-  toggle) — `/account` is a placeholder until the camera/screen hardware and
-  its streaming protocol are designed.
-- The camera-side and screen-side device software.
-- Order fulfillment after a Stripe purchase (shipping details, inventory).
+- **The camera feed itself.** Each camera has a `stream_url` field, and the
+  screen renders it when set, but nothing produces that stream yet — that
+  needs the camera hardware and its streaming protocol chosen first. Until
+  then the screen shows a framing placeholder.
+- **Drag-to-frame.** Framing is currently "point the camera and set its
+  stream URL"; cropping a region from the browser comes once there's a real
+  feed to crop.
+- **Pairing a screen without a teacher login.** The screen device currently
+  signs in as the teacher once. A per-classroom screen token would be nicer.
+- **Order fulfillment** after a Stripe purchase (shipping details,
+  inventory).
 
 ## Tech stack
 
