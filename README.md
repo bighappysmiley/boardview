@@ -23,8 +23,9 @@ free on Netlify.
 - **Student screen** (`/screen/[classroomId]`) — the dedicated view for the
   desk device. Shows the BoardView logo when idle, the framed camera view
   when live, and only the time plus the BoardView name when blacked out.
-- **Pricing / purchase** (`/pricing`) — the software is free; hardware kits
-  are bought once via [Stripe](https://stripe.com) Checkout.
+- **Shop** (`/shop`) — desk sets, extra cameras, extra screens. People add
+  what they need to a bag and pay with [Stripe](https://stripe.com) Checkout.
+  `/pricing` still sends them there.
 
 ## Multiple cameras per classroom
 
@@ -73,20 +74,75 @@ Supabase's free tier comfortably covers a school or small district's worth of
 teacher accounts; the account model can grow into organizations/schools in
 Postgres later without switching providers.
 
-### Stripe (hardware purchases)
+### Set up Stripe (shop)
 
-1. Create a free [Stripe](https://stripe.com) account. Stripe has no monthly
-   fee — it only takes a percentage of real transactions, so it doesn't cost
-   you anything to have it wired up.
-2. In **Developers → API keys**, copy the **Secret key** into `.env.local` as
-   `STRIPE_SECRET_KEY`.
-3. Create a Product + Price for each item listed in
-   `src/lib/hardwareKits.ts` (desk set, extra camera, extra screen), and put
-   each Price ID (starts with `price_`) into the matching env var
-   (`STRIPE_PRICE_DESK_SET`, and so on). The desk set still accepts the older
-   `STRIPE_PRICE_CLASSROOM_KIT` name.
-4. Until those are set, the order page still renders — it asks people to
-   email you instead of erroring out.
+Stay in **Test mode** until a real card works. Stripe is free until you take
+a payment — it only takes a cut of each sale.
+
+**1. Create an account**
+
+Go to [stripe.com](https://stripe.com) and sign up. Confirm your email.
+
+**2. Copy the secret key**
+
+In Stripe: **Developers → API keys**. Copy the **Secret key**
+(`sk_test_...` while testing). Put it in `.env.local` as:
+
+```
+STRIPE_SECRET_KEY=sk_test_...
+```
+
+Never put this in `NEXT_PUBLIC_*`. Never commit it.
+
+**3. Create a product for each shop item**
+
+In Stripe: **Product catalog → Add product**. For each of these, set a name
+and a one-time price (your real selling price), then save:
+
+| Shop item     | Suggested Stripe name |
+| ------------- | --------------------- |
+| Desk set      | BoardView desk set    |
+| Extra camera  | BoardView extra camera |
+| Extra screen  | BoardView extra screen |
+
+On the product page, copy the **Price ID** (`price_...`, not the product
+id `prod_...`).
+
+**4. Put each Price ID in `.env.local`**
+
+```
+STRIPE_PRICE_DESK_SET=price_...
+STRIPE_PRICE_EXTRA_CAMERA=price_...
+STRIPE_PRICE_EXTRA_SCREEN=price_...
+```
+
+Restart `npm run dev` after saving. (If you already created a classroom-kit
+price, `STRIPE_PRICE_CLASSROOM_KIT` still works for the desk set.)
+
+**5. Try a test order**
+
+Open `/shop`, add something, check out. Use card `4242 4242 4242 4242`, any
+future expiry, any CVC, any ZIP. You should land back on `/shop` with a
+thank-you. In Stripe: **Payments** should show the test payment.
+
+**6. Same keys on Netlify**
+
+**Site configuration → Environment variables.** Add the same names and
+values. Redeploy after changing them.
+
+**7. Go live**
+
+In Stripe, switch from Test to **Live**. Repeat steps 2–4 with `sk_live_...`
+and live `price_...` ids (test and live ids are different). Update Netlify
+and redeploy.
+
+**Add another item later**
+
+1. Create the Product + Price in Stripe, copy `price_...`.
+2. Add `STRIPE_PRICE_YOUR_THING=price_...` to `.env.local` and Netlify.
+3. Add one object to the list in `src/lib/shop.ts` (`id`, `envKey`, `title`,
+   `blurb`). The shop page and checkout pick it up on their own.
+
 
 ### Deploying to Netlify (free)
 

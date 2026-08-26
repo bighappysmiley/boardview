@@ -9,7 +9,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 const links = [
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/pricing", label: "Kits" },
+  { href: "/shop", label: "Shop" },
 ];
 
 export function Navbar() {
