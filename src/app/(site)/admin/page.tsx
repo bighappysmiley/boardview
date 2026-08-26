@@ -28,6 +28,7 @@ export default function AdminPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (!isSupabaseConfigured) return;
     if (loading) return;
     if (!user) {
       router.replace("/login?next=/admin");
