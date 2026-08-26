@@ -57,5 +57,28 @@ create policy "Teachers manage cameras in their own classrooms"
 
 -- Let the student screen react to the teacher's blackout toggle and camera
 -- edits instantly, with no refresh on the device.
-alter publication supabase_realtime add table public.classrooms;
-alter publication supabase_realtime add table public.cameras;
+-- Guarded so the whole file stays safe to run more than once: adding a table
+-- that is already in the publication is an error, unlike the statements above.
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'classrooms'
+    ) then
+      alter publication supabase_realtime add table public.classrooms;
+    end if;
+
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'cameras'
+    ) then
+      alter publication supabase_realtime add table public.cameras;
+    end if;
+  end if;
+end
+$$;
