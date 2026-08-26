@@ -1,0 +1,300 @@
+# BoardView — project handoff
+
+Read this first. It's the full picture of what BoardView is, what's built, how
+it's put together, and what to do next. Written to be handed straight to an AI
+coding assistant (Cursor, etc.) or a new developer.
+
+---
+
+## 1. What the product is
+
+BoardView helps students who can't see the classroom board — because of low
+vision, or because they're seated too far away.
+
+It has three parts:
+
+1. **Camera(s)** — small cameras mounted on the ceiling or wall, each pointed
+   at something the student needs to see: the front whiteboard, a second
+   board, a poster. Each runs off a rechargeable battery pack, optionally
+   housed in a 3D-printed enclosure. Recharged between subjects.
+2. **Screen** — a small screen (roughly iPad-mini sized, deliberately *not*
+   tablet-like) sitting on the student's desk. It does exactly one job: show
+   the board. It runs no other apps.
+3. **This web app** — the marketing site, teacher accounts, and the controls
+   the teacher uses to manage the room.
+
+**Design intent, stated by the project owner:** it should look like a
+professional Apple or Google product — light, clean, glass-morphic. It must
+**not** have the "AI app" look: no dark mode with glowing accents, no heavy
+rounded neon cards. Keep it restrained.
+
+**Cost constraint:** the owner must not pay for any service to run this.
+Everything is on free tiers (Netlify hosting, Supabase free tier). Stripe is
+used for hardware sales — it has no monthly fee, only a per-transaction cut,
+so it costs nothing to have wired up. **The software is free for schools; only
+the physical hardware is paid for.**
+
+---
+
+## 2. Current state
+
+### Built and working
+
+| Area | Routes | Status |
+|---|---|---|
+| Marketing site | `/`, `/pricing` | Done |
+| Auth | `/signup`, `/login`, `/forgot-password`, `/reset-password`, `/auth/callback` | Done (Supabase, email verification) |
+| Teacher controls | `/account`, `/account/classrooms/[id]` | Done |
+| Student screen | `/screen/[classroomId]`, `/screen/demo` | Done |
+| Hardware checkout | `/api/checkout` | Done (needs Stripe keys to go live) |
+
+### Not built yet — these are the next real milestones
+
+1. **The actual camera feed.** This is the big one. Every camera row has a
+   `stream_url` field and the screen renders it as an `<img>` when set, but
+   *nothing produces that stream*. This needs the camera hardware chosen and
+   a streaming approach picked (MJPEG over HTTP is the simplest thing that
+   would work with the current `<img>` rendering; WebRTC if low latency
+   matters). Until then the screen shows a framing placeholder.
+2. **Drag-to-frame.** Right now "framing" means physically aiming the camera
+   and pasting its stream URL. Cropping a region in the browser needs a real
+   feed to crop first.
+3. **Screen pairing without a teacher login.** Currently the screen device
+   signs into the teacher's account once. That works but means a student's
+   desk device is logged into a teacher account. **Recommended fix:** add a
+   short-lived per-classroom `screen_token`, and a Postgres security-definer
+   function that lets an anonymous screen read just that classroom and its
+   cameras. This is the highest-value security improvement.
+4. **Order fulfillment** after a Stripe purchase — shipping address capture,
+   inventory, order records. Currently checkout succeeds and nothing records
+   the order.
+5. **Device software** for the camera side and the screen side.
+
+---
+
+## 3. Tech stack
+
+- **Next.js 16.3.3**, App Router, Turbopack (default in 16 — no `--turbopack`
+  flag needed). React 19.2.
+- **TypeScript**, strict.
+- **Tailwind CSS v4** (CSS-first config — there is no `tailwind.config.js`;
+  tokens live in `@theme inline` inside `src/app/globals.css`).
+- **Supabase** — auth, Postgres, Realtime.
+- **Stripe** — hardware checkout only.
+- **Netlify** — hosting, via `@netlify/plugin-nextjs`.
+
+> **Important:** this Next.js version has breaking changes vs. older training
+> data. `AGENTS.md` in the repo root says so, and the version-matched docs are
+> bundled at `node_modules/next/dist/docs/`. **Read those before writing
+> routing/API code** rather than relying on memory. That `AGENTS.md` block is
+> auto-generated and re-added by `next dev` — don't delete it.
+
+---
+
+## 4. File map
+
+```
+src/
+  app/
+    layout.tsx                 Root layout — <html>/<body> only, no chrome
+    globals.css                Design tokens + glass utilities (read before styling)
+    (site)/                    Route group: everything WITH navbar + footer
+      layout.tsx               Skip link, Navbar, <main>, Footer
+      page.tsx                 Landing page
+      login|signup|forgot-password|reset-password/page.tsx
+      pricing/page.tsx
+      account/page.tsx                     Classroom list + create
+      account/classrooms/[id]/page.tsx     Cameras, blackout, live preview
+    screen/[classroomId]/page.tsx  Student screen — NO nav/footer, fullscreen
+    auth/callback/route.ts        Email-verification code exchange
+    api/checkout/route.ts         Stripe Checkout session
+  components/
+    layout.tsx        Container / Section / SectionHeader / Card  ← spacing system
+    ScreenCanvas.tsx  What the screen displays + DeviceFrame bezel
+    ScreenDemo.tsx    Interactive mock used on the landing page
+    Navbar.tsx Footer.tsx Logo.tsx Button.tsx form.tsx AuthCard.tsx SetupNotice.tsx
+  lib/
+    types.ts          Classroom, Camera
+    supabase/client.ts  Browser client + isSupabaseConfigured
+    supabase/server.ts  Route-handler client (cookie read/write)
+    demo.ts           Sample data for /screen/demo and landing mocks
+    useClock.ts       Hydration-safe clock
+    hardwareKits.ts   Stripe kit definitions
+supabase/schema.sql   Run this in the Supabase SQL editor
+```
+
+**Why the `(site)` route group exists:** `/screen/*` must render fullscreen
+with no navbar or footer. Parentheses mean the folder doesn't appear in URLs.
+If you add a new marketing/account page, put it in `(site)/`.
+
+---
+
+## 5. Data model
+
+```
+classrooms
+  id           uuid pk
+  owner_id     uuid -> auth.users(id) cascade
+  name         text (1..80 chars)
+  blacked_out  boolean default false
+  created_at   timestamptz
+
+cameras
+  id            uuid pk
+  classroom_id  uuid -> classrooms(id) cascade
+  label         text (1..80 chars)
+  stream_url    text nullable      -- null until hardware is paired
+  position      integer            -- order the "Next view" button cycles
+  created_at    timestamptz
+```
+
+Both tables have **row-level security**: a teacher can only read/write rows
+they own. Cameras are checked through their classroom's `owner_id`.
+
+**Verified**, by running `schema.sql` against a real PostgreSQL 16 with an
+`auth.users` / `auth.uid()` shim: a second teacher sees none of the first's
+rows, their `UPDATE` affects zero rows, and inserting a camera into another
+teacher's classroom is rejected by the policy. The file is also safe to run
+more than once.
+
+`position` is kept dense (0,1,2,…). Adding appends at `cameras.length`;
+reordering and deleting rewrite every row's position. See `moveCamera` and
+`removeCamera` in `account/classrooms/[id]/page.tsx`.
+
+---
+
+## 6. Design system — follow this, don't improvise
+
+The whole point of the last design pass was to get everything onto **one**
+scale. Please don't reintroduce ad-hoc padding.
+
+**Base size lives on `html` (17px), not `body`.** This is deliberate and load-
+bearing: Tailwind's spacing *and* type scales are both `rem`-based off `html`.
+An earlier version set `body { font-size: 18px }`, which put text and padding
+on two different scales — that's what made padding look subtly wrong
+everywhere. **Never set a base font-size on `body`.** 17px (rather than 16)
+gives slightly larger, more readable text, which matters for this audience.
+
+**Use the primitives in `src/components/layout.tsx`:**
+
+- `<Section>` — one vertical rhythm (`py-14 sm:py-16`) + container. Use for
+  every top-level page section.
+- `<Container size="wide" | "narrow" | "form">` — `wide` (max-w-5xl) for
+  marketing and the classroom page, `narrow` for simple account pages, `form`
+  for auth cards.
+- `<SectionHeader title lead centered?>` — heading + lead, consistently spaced.
+- `<Card solid?>` — every card. Uniform `p-7 sm:p-8`, `rounded-3xl`.
+
+**Don't** write bespoke `px-6 py-20 max-w-6xl` on a new page. Use `<Section>`.
+
+**Colors/effects** are CSS variables in `globals.css`: `--accent` (#1d4ed8),
+`--muted`, `--screen` (#0b0d12), plus `.glass-panel` / `.glass-panel-solid`.
+Light theme only, on purpose.
+
+**Accessibility is a product requirement here, not a nice-to-have.** The users
+are low-vision students and their teachers. Keep: the skip link, visible focus
+rings (`:focus-visible` is styled globally), real `<label>`s on every input,
+`aria-label` on icon-only buttons, and the `prefers-reduced-motion` block.
+
+**The screen's appearance lives in exactly one place:** `ScreenCanvas.tsx`,
+shared by the real `/screen` route, the classroom preview, and the landing-page
+mocks. Change it there and all three stay in sync. Its three modes:
+
+- `boot` — BoardView logo only (idle / no cameras)
+- `live` — camera view + label + `n/total` + "Next view" button
+- `blackout` — **only** "BoardView" top-left and the time top-right
+
+---
+
+## 7. Running it locally
+
+```bash
+npm install
+cp .env.local.example .env.local   # then fill it in
+npm run dev                        # http://localhost:3000
+npm run build                      # production build
+npx eslint .                       # lint
+```
+
+`/screen/demo` works with sample cameras and **no Supabase setup**, which
+makes it the fastest way to see the screen UI.
+
+### Environment variables
+
+| Variable | Secret? | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | No | Public by design |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No | Public by design; RLS is what protects data |
+| `STRIPE_SECRET_KEY` | **Yes** | Server-only, used in `/api/checkout` |
+| `STRIPE_PRICE_CLASSROOM_KIT` | No | A `price_...` id |
+| `STRIPE_PRICE_SCHOOL_BUNDLE` | No | A `price_...` id |
+
+**Never** put Supabase's `service_role` / secret key in this project — it
+bypasses RLS and `NEXT_PUBLIC_*` values are shipped to the browser.
+
+---
+
+## 8. Gotchas that will waste your time
+
+1. **`NEXT_PUBLIC_*` values are frozen into the JavaScript at build time.**
+   Adding or changing them in Netlify does nothing until you rebuild.
+   *Verified:* a build without them contains no Supabase URL anywhere in the
+   client bundle; a build with them has the URL and key inlined. On Netlify
+   use **Deploys → Trigger deploy → Clear cache and deploy site**, then
+   hard-refresh the browser. On Netlify, do **not** tick "contains secret
+   values" for `NEXT_PUBLIC_*` vars — secret scanning will fail the build,
+   because those values are *supposed* to be in the output.
+
+2. **Route types go stale after moving files.** If `next build` fails with
+   `Cannot find module '../../../src/app/<old path>/page.js'` in
+   `.next/dev/types/validator.ts`, just `rm -rf .next` and rebuild.
+
+3. **The ESLint config bans `setState` called synchronously in a `useEffect`
+   body.** Set initial state in `useState` instead, or update inside a
+   promise/event callback. This is why `useClock` uses `useSyncExternalStore`
+   rather than a `setInterval` + `setState` effect — and why it renders
+   `--:--` on the server, avoiding a hydration mismatch.
+
+4. **`window.location.href = x` is flagged** by the immutability rule. Use
+   `window.location.assign(x)`.
+
+5. **Supabase redirect allow-list.** Auth → URL Configuration must include
+   `http://localhost:3000/**` and your deployed URL, or verification links
+   fail.
+
+6. **Tailwind v4 has no JS config file.** Add tokens in `@theme inline` in
+   `globals.css`.
+
+---
+
+## 9. Suggested next steps, in order
+
+1. **Merge/verify branches.** Work happened on
+   `claude/boardview-accessibility-4xf614`; `main` may be a commit behind.
+   Check before starting.
+2. **Screen pairing tokens** (item 3 in §2) — best security-per-effort win.
+3. **Pick the camera hardware**, then implement the feed. Start with MJPEG so
+   the existing `<img>` rendering works unchanged.
+4. **Record Stripe orders** — a `orders` table + a Stripe webhook route, so a
+   purchase produces a shipping record.
+5. **Test on the real screen device** at its actual physical size; the layout
+   is responsive but has only been checked at 360–1440px in a desktop browser.
+
+---
+
+## 10. What has and hasn't been tested
+
+**Verified working:** production build and lint are clean; all routes render
+with no console errors; camera cycling wraps correctly in both directions via
+button and arrow keys; the full teacher CRUD path (create classroom, add /
+rename / reorder / delete camera, blackout toggle) was driven in a real
+browser against stubbed Supabase REST endpoints, and issues the correct
+writes with positions repacked densely; RLS policies verified against real
+PostgreSQL; no horizontal overflow at 360/420/768/1024/1440px; cards measured
+to equal heights.
+
+**Not verified:** anything against a real live Supabase project (no
+credentials available at the time); Stripe checkout against real keys; the
+camera feed (doesn't exist yet); Realtime blackout propagation to a second
+device (the code subscribes correctly but has only been exercised
+single-client).
