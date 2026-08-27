@@ -42,27 +42,30 @@ export default function ClassroomPage() {
     const supabase = createClient();
     let active = true;
 
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!active) return;
-      if (!data.user) {
-        router.replace("/login");
-        return;
-      }
-      const { data: room, error: roomError } = await supabase
-        .from("classrooms")
-        .select("*")
-        .eq("id", classroomId)
-        .single();
-      if (!active) return;
-      if (roomError) {
-        setError("We couldn't find that classroom.");
-        setLoading(false);
-        return;
-      }
-      setClassroom(room as Classroom);
-      await loadCameras();
-      if (active) setLoading(false);
-    });
+    Promise.resolve()
+      .then(async () => {
+        const { data } = await supabase.auth.getSession();
+        if (!active) return;
+        if (!data.session?.user) {
+          router.replace(`/login?next=/account/classrooms/${classroomId}`);
+          return;
+        }
+        const { data: room, error: roomError } = await supabase
+          .from("classrooms")
+          .select("*")
+          .eq("id", classroomId)
+          .single();
+        if (!active) return;
+        if (roomError) {
+          setError("We couldn't find that classroom.");
+          return;
+        }
+        setClassroom(room as Classroom);
+        await loadCameras();
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
     return () => {
       active = false;

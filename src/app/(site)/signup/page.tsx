@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AuthCard, FormField, FormError, FormNotice } from "@/components/AuthCard";
 import { Button } from "@/components/Button";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { withTimeout } from "@/lib/auth";
 
 export default function SignUpPage() {
   const [fullName, setFullName] = useState("");
@@ -27,22 +28,33 @@ export default function SignUpPage() {
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/request`,
-        data: { full_name: fullName, school },
-      },
-    });
-    setLoading(false);
-
-    if (signUpError) {
-      setError(signUpError.message);
-      return;
+    try {
+      const supabase = createClient();
+      const { error: signUpError } = await withTimeout(
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/request`,
+            data: { full_name: fullName, school },
+          },
+        }),
+        20000
+      );
+      if (signUpError) {
+        setError(signUpError.message);
+        return;
+      }
+      setSubmitted(true);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "We couldn't create that account. Try again."
+      );
+    } finally {
+      setLoading(false);
     }
-    setSubmitted(true);
   }
 
   if (submitted) {

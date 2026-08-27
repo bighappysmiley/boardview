@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { endSessionIfBrowserClosed } from "@/lib/auth";
 import type { StaffRole } from "@/lib/types";
 import {
   defaultPermissions,
@@ -62,14 +63,20 @@ export function useSession() {
       setPermissions(resolvePermissions(mine?.role, mine?.permissions));
     }
 
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!active) return;
-      await applyUser(data.user ?? null);
-      if (active) setLoading(false);
-    });
+    Promise.resolve()
+      .then(async () => {
+        await endSessionIfBrowserClosed(() => supabase.auth.signOut());
+        if (!active) return;
+        const { data } = await supabase.auth.getSession();
+        await applyUser(data.session?.user ?? null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        if (event === "INITIAL_SESSION") return;
         void applyUser(session?.user ?? null);
       }
     );

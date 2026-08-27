@@ -36,20 +36,24 @@ export default function AccountPage() {
     const supabase = createClient();
     let active = true;
 
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!active) return;
-      if (!data.user) {
-        router.replace("/login");
-        return;
-      }
-      setUser(data.user);
-      await load();
-      if (active) setLoading(false);
-    });
+    Promise.resolve()
+      .then(async () => {
+        const { data } = await supabase.auth.getSession();
+        if (!active) return;
+        if (!data.session?.user) {
+          router.replace("/login?next=/account");
+          return;
+        }
+        setUser(data.session.user);
+        await load();
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (!session) router.replace("/login");
+      (event) => {
+        if (event === "SIGNED_OUT") router.replace("/login");
       }
     );
     return () => {
