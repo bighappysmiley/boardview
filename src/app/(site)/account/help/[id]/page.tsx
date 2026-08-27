@@ -12,7 +12,7 @@ import { SetupNotice } from "@/components/SetupNotice";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useSession } from "@/lib/useSession";
 import type { Ticket, TicketMessage } from "@/lib/types";
-import { formatDateTime, messageAuthorLabel } from "@/lib/types";
+import { ChatBubble } from "@/components/ChatBubble";
 import { findCommand, slashMenuQuery, type CommandDef } from "@/lib/commands";
 
 export default function TicketThreadPage() {
@@ -217,25 +217,15 @@ export default function TicketThreadPage() {
           <p className="mt-1 text-sm text-muted">{ticket.subject}</p>
         )}
 
-        <ol className="mt-10 space-y-6">
+        <ol className="mt-10 space-y-3">
           {messages.map((message) => (
-            <li key={message.id} className="border-t border-black/10 pt-6">
-              <p className="text-sm text-muted">
-                {messageAuthorLabel(
-                  message,
-                  user.id,
-                  ticket.visitor_name || ticket.contact_email
-                )}{" "}
-                · {formatDateTime(message.created_at)}
-              </p>
-              <p
-                className={`mt-2 whitespace-pre-wrap leading-relaxed ${
-                  message.kind === "note" ? "text-muted italic" : ""
-                }`}
-              >
-                {message.body}
-              </p>
-            </li>
+            <ChatBubble
+              key={message.id}
+              message={message}
+              viewerId={user.id}
+              viewerIsStaff={isStaff}
+              visitorName={ticket.visitor_name || ticket.contact_email}
+            />
           ))}
         </ol>
 

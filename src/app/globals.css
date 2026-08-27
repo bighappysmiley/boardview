@@ -11,6 +11,8 @@
   --screen: #0b0d12;
   --hairline: rgba(0, 0, 0, 0.08);
   --surface: #ffffff;
+  --chat-mine: #0071e3;
+  --chat-theirs: #e9e9eb;
 }
 
 @theme inline {
@@ -23,6 +25,8 @@
   --color-accent-contrast: var(--accent-contrast);
   --color-screen: var(--screen);
   --color-surface: var(--surface);
+  --color-chat-mine: var(--chat-mine);
+  --color-chat-theirs: var(--chat-theirs);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }

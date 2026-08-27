@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useSession } from "@/lib/useSession";
 import type { TicketMessage } from "@/lib/types";
-import { messageAuthorLabel } from "@/lib/types";
+import { ChatBubble } from "@/components/ChatBubble";
 import { TextField } from "@/components/form";
 
 const STORAGE_KEY = "bv_support";
@@ -310,29 +310,16 @@ export function SupportChat() {
                 Send a message and we’ll reply here.
               </p>
             ) : (
-              <ol className="space-y-3">
-                {messages.map((message) => {
-                  const mine = message.kind === "user";
-                  const system = message.kind === "system";
-                  return (
-                    <li key={message.id}>
-                      <p className="text-xs text-muted">
-                        {messageAuthorLabel(message, user?.id, name)}
-                      </p>
-                      <p
-                        className={`mt-1 whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-relaxed ${
-                          system
-                            ? "bg-black/[0.04] text-foreground"
-                            : mine
-                              ? "bg-foreground text-white"
-                              : "border border-black/8 bg-white"
-                        }`}
-                      >
-                        {message.body}
-                      </p>
-                    </li>
-                  );
-                })}
+              <ol className="space-y-2.5">
+                {messages.map((message) => (
+                  <ChatBubble
+                    key={message.id}
+                    message={message}
+                    viewerId={user?.id}
+                    viewerIsStaff={false}
+                    visitorName={name}
+                  />
+                ))}
               </ol>
             )}
             {inChat && error && (
