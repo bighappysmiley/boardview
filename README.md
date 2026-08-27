@@ -24,6 +24,9 @@ a Next.js app meant to be hosted free on Netlify.
   hardware request (quantities and notes). There is no cart or checkout.
   `/shop` and `/pricing` redirect here.
 - **Support** (`/account/help`) — open a ticket; replies live on the thread.
+  A floating chat on every public and account page uses the same tickets, so
+  Admin sees those messages too. The student desk screen (`/screen/...`) has
+  no chat, so it doesn't cover the board.
 - **Admin** (`/admin`) — emails listed in `public.admins` can review requests
   (status) and support tickets (reply, close).
 - **Teacher controls** (`/account`, `/account/classrooms/[id]`) — create a
