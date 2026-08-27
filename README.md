@@ -9,6 +9,10 @@ This repository is the web app: the public site, teacher accounts, classroom
 controls, hardware/trial requests, support tickets, and an admin inbox. It's
 a Next.js app meant to be hosted free on Netlify.
 
+> **Picking this up as a developer (or handing it to an AI assistant)?** Start
+> with **[HANDOFF.md](HANDOFF.md)** — architecture, data model, design system
+> rules, known traps, the roadmap, and what has and hasn't been tested.
+
 ## What's here so far
 
 - **Landing page** (`/`) — explains the product for teachers and schools.
