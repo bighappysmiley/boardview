@@ -927,3 +927,459 @@ $$;
 
 grant execute on function public.delete_closed_ticket(uuid) to authenticated;
 
+-- Seating chart, students, PINs, and per-desk screen pairing.
+-- Anonymous desk devices never SELECT these tables; they only call the
+-- security-definer functions below.
+
+alter table public.classrooms
+  add column if not exists pin_mode text not null default 'assigned_desk';
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'classrooms_pin_mode_check'
+  ) then
+    alter table public.classrooms
+      add constraint classrooms_pin_mode_check
+      check (pin_mode in ('assigned_desk', 'pin_as_id'));
+  end if;
+end
+$$;
+
+create table if not exists public.desks (
+  id uuid primary key default gen_random_uuid(),
+  classroom_id uuid not null references public.classrooms (id) on delete cascade,
+  row integer not null check (row between 0 and 7),
+  col integer not null check (col between 0 and 7),
+  kind text not null check (kind in ('screen', 'empty')),
+  label text check (
+    label is null or char_length(trim(label)) between 1 and 40
+  ),
+  screen_token uuid unique,
+  created_at timestamptz not null default now(),
+  unique (classroom_id, row, col)
+);
+
+create index if not exists desks_classroom_id_idx on public.desks (classroom_id);
+
+create table if not exists public.students (
+  id uuid primary key default gen_random_uuid(),
+  classroom_id uuid not null references public.classrooms (id) on delete cascade,
+  display_name text not null
+    check (char_length(trim(display_name)) between 1 and 80),
+  pin text not null check (pin ~ '^\d{4}$'),
+  pin_hash text not null default '',
+  desk_id uuid references public.desks (id) on delete set null,
+  blacked_out boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (classroom_id, pin)
+);
+
+create unique index if not exists students_one_per_desk
+  on public.students (desk_id)
+  where desk_id is not null;
+
+create index if not exists students_classroom_id_idx
+  on public.students (classroom_id);
+
+-- Device sessions after a PIN unlock. Not readable from the client.
+create table if not exists public.desk_sessions (
+  id uuid primary key default gen_random_uuid(),
+  desk_id uuid not null references public.desks (id) on delete cascade,
+  student_id uuid not null references public.students (id) on delete cascade,
+  token uuid not null unique default gen_random_uuid(),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists desk_sessions_desk_id_idx
+  on public.desk_sessions (desk_id);
+
+create table if not exists public.desk_unlock_attempts (
+  desk_id uuid primary key references public.desks (id) on delete cascade,
+  failed_count integer not null default 0,
+  locked_until timestamptz
+);
+
+alter table public.desks enable row level security;
+alter table public.students enable row level security;
+alter table public.desk_sessions enable row level security;
+alter table public.desk_unlock_attempts enable row level security;
+
+drop policy if exists "Teachers manage desks in their own classrooms" on public.desks;
+create policy "Teachers manage desks in their own classrooms"
+  on public.desks
+  for all
+  using (
+    exists (
+      select 1 from public.classrooms c
+      where c.id = desks.classroom_id and c.owner_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.classrooms c
+      where c.id = desks.classroom_id and c.owner_id = auth.uid()
+    )
+  );
+
+drop policy if exists "Teachers manage students in their own classrooms" on public.students;
+create policy "Teachers manage students in their own classrooms"
+  on public.students
+  for all
+  using (
+    exists (
+      select 1 from public.classrooms c
+      where c.id = students.classroom_id and c.owner_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.classrooms c
+      where c.id = students.classroom_id and c.owner_id = auth.uid()
+    )
+  );
+
+revoke all on table public.desks from anon;
+revoke all on table public.students from anon;
+revoke all on table public.desk_sessions from anon, authenticated;
+revoke all on table public.desk_unlock_attempts from anon, authenticated;
+
+grant select, insert, update, delete on table public.desks to authenticated;
+grant select, insert, update, delete on table public.students to authenticated;
+
+create or replace function public.hash_student_pin()
+returns trigger
+language plpgsql
+set search_path = public, extensions
+as $$
+begin
+  if tg_op = 'INSERT' or new.pin is distinct from old.pin then
+    new.pin_hash := crypt(new.pin, gen_salt('bf'));
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists students_hash_pin on public.students;
+create trigger students_hash_pin
+  before insert or update of pin on public.students
+  for each row execute function public.hash_student_pin();
+
+create or replace function public.ensure_desk_token()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.kind = 'screen' then
+    new.screen_token := coalesce(new.screen_token, gen_random_uuid());
+  else
+    new.screen_token := null;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists desks_ensure_token on public.desks;
+create trigger desks_ensure_token
+  before insert or update of kind, screen_token on public.desks
+  for each row execute function public.ensure_desk_token();
+
+create or replace function public.clear_desk_sessions_on_change()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.kind = 'empty' or new.screen_token is distinct from old.screen_token then
+    delete from public.desk_sessions where desk_id = new.id;
+    delete from public.desk_unlock_attempts where desk_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists desks_clear_sessions on public.desks;
+create trigger desks_clear_sessions
+  after update of kind, screen_token on public.desks
+  for each row execute function public.clear_desk_sessions_on_change();
+
+create or replace function public.desk_session_payload(
+  p_desk uuid,
+  p_student uuid,
+  p_session uuid
+)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'session_token', p_session,
+    'classroom_id', c.id,
+    'classroom_name', c.name,
+    'classroom_blacked_out', c.blacked_out,
+    'student_blacked_out', s.blacked_out,
+    'cameras', coalesce((
+      select jsonb_agg(
+        jsonb_build_object(
+          'id', cam.id,
+          'classroom_id', cam.classroom_id,
+          'label', cam.label,
+          'stream_url', cam.stream_url,
+          'position', cam.position,
+          'created_at', cam.created_at
+        )
+        order by cam.position
+      )
+      from public.cameras cam
+      where cam.classroom_id = c.id
+    ), '[]'::jsonb)
+  )
+  from public.desks d
+  join public.classrooms c on c.id = d.classroom_id
+  join public.students s on s.id = p_student
+  where d.id = p_desk;
+$$;
+
+create or replace function public.open_desk(p_token uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  d public.desks;
+  c public.classrooms;
+  seated boolean;
+begin
+  if p_token is null then
+    raise exception 'This screen is not connected.';
+  end if;
+
+  select * into d
+    from public.desks
+   where screen_token = p_token
+     and kind = 'screen';
+
+  if d.id is null then
+    raise exception 'This screen is not connected.';
+  end if;
+
+  select * into c from public.classrooms where id = d.classroom_id;
+  select exists(
+    select 1 from public.students s where s.desk_id = d.id
+  ) into seated;
+
+  return jsonb_build_object(
+    'desk_id', d.id,
+    'classroom_id', c.id,
+    'classroom_name', c.name,
+    'pin_mode', c.pin_mode,
+    'seated', seated
+  );
+end;
+$$;
+
+create or replace function public.note_desk_failure(p_desk uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  n integer := 0;
+  until_ts timestamptz;
+begin
+  select failed_count, locked_until
+    into n, until_ts
+    from public.desk_unlock_attempts
+   where desk_id = p_desk;
+
+  if until_ts is not null and until_ts <= now() then
+    n := 0;
+  end if;
+
+  n := coalesce(n, 0) + 1;
+
+  insert into public.desk_unlock_attempts (desk_id, failed_count, locked_until)
+  values (
+    p_desk,
+    n,
+    case when n >= 5 then now() + interval '2 minutes' else null end
+  )
+  on conflict (desk_id) do update
+    set failed_count = excluded.failed_count,
+        locked_until = excluded.locked_until;
+end;
+$$;
+
+create or replace function public.unlock_screen(p_token uuid, p_pin text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  d public.desks;
+  c public.classrooms;
+  s public.students;
+  until_ts timestamptz;
+  sess uuid;
+begin
+  if p_token is null then
+    raise exception 'That PIN didn''t work.';
+  end if;
+
+  select * into d
+    from public.desks
+   where screen_token = p_token
+     and kind = 'screen';
+
+  if d.id is null then
+    raise exception 'That PIN didn''t work.';
+  end if;
+
+  select locked_until into until_ts
+    from public.desk_unlock_attempts
+   where desk_id = d.id;
+
+  if until_ts is not null and until_ts > now() then
+    raise exception 'Try again in a moment.';
+  end if;
+
+  select * into c from public.classrooms where id = d.classroom_id;
+
+  if p_pin is null or p_pin !~ '^\d{4}$' then
+    perform public.note_desk_failure(d.id);
+    raise exception 'That PIN didn''t work.';
+  end if;
+
+  if c.pin_mode = 'assigned_desk' then
+    select * into s from public.students where desk_id = d.id;
+    if s.id is null or crypt(p_pin, s.pin_hash) <> s.pin_hash then
+      perform public.note_desk_failure(d.id);
+      raise exception 'That PIN didn''t work.';
+    end if;
+  else
+    select * into s
+      from public.students
+     where classroom_id = c.id
+       and pin = p_pin;
+
+    if s.id is null or crypt(p_pin, s.pin_hash) <> s.pin_hash then
+      perform public.note_desk_failure(d.id);
+      raise exception 'That PIN didn''t work.';
+    end if;
+
+    update public.students
+       set desk_id = null
+     where desk_id = d.id
+       and id <> s.id;
+
+    update public.students
+       set desk_id = d.id
+     where id = s.id;
+  end if;
+
+  delete from public.desk_unlock_attempts where desk_id = d.id;
+  delete from public.desk_sessions where desk_id = d.id;
+
+  insert into public.desk_sessions (desk_id, student_id)
+  values (d.id, s.id)
+  returning token into sess;
+
+  return public.desk_session_payload(d.id, s.id, sess);
+end;
+$$;
+
+create or replace function public.desk_session(p_token uuid, p_session uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  d public.desks;
+  sess public.desk_sessions;
+  s public.students;
+begin
+  if p_token is null or p_session is null then
+    raise exception 'Sign in with your PIN again.';
+  end if;
+
+  select * into sess from public.desk_sessions where token = p_session;
+  if sess.id is null then
+    raise exception 'Sign in with your PIN again.';
+  end if;
+
+  select * into d
+    from public.desks
+   where id = sess.desk_id
+     and screen_token = p_token
+     and kind = 'screen';
+
+  if d.id is null then
+    raise exception 'Sign in with your PIN again.';
+  end if;
+
+  select * into s from public.students where id = sess.student_id;
+  if s.id is null or s.desk_id is distinct from d.id then
+    raise exception 'Sign in with your PIN again.';
+  end if;
+
+  return public.desk_session_payload(d.id, s.id, sess.token);
+end;
+$$;
+
+create or replace function public.rotate_desk_token(p_desk uuid)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_token uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'not allowed';
+  end if;
+
+  update public.desks d
+     set screen_token = gen_random_uuid()
+    from public.classrooms c
+   where d.id = p_desk
+     and d.kind = 'screen'
+     and c.id = d.classroom_id
+     and c.owner_id = auth.uid()
+  returning d.screen_token into new_token;
+
+  if new_token is null then
+    raise exception 'not allowed';
+  end if;
+
+  return new_token;
+end;
+$$;
+
+revoke all on function public.open_desk(uuid) from public;
+revoke all on function public.unlock_screen(uuid, text) from public;
+revoke all on function public.desk_session(uuid, uuid) from public;
+revoke all on function public.rotate_desk_token(uuid) from public;
+revoke all on function public.desk_session_payload(uuid, uuid, uuid) from public;
+revoke all on function public.note_desk_failure(uuid) from public;
+revoke all on function public.hash_student_pin() from public;
+revoke all on function public.ensure_desk_token() from public;
+revoke all on function public.clear_desk_sessions_on_change() from public;
+
+grant execute on function public.open_desk(uuid) to anon, authenticated;
+grant execute on function public.unlock_screen(uuid, text) to anon, authenticated;
+grant execute on function public.desk_session(uuid, uuid) to anon, authenticated;
+grant execute on function public.rotate_desk_token(uuid) to authenticated;
+grant execute on function public.hash_student_pin() to authenticated;
+grant execute on function public.ensure_desk_token() to authenticated;
+grant execute on function public.clear_desk_sessions_on_change() to authenticated;
+

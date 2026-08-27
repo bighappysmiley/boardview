@@ -8,6 +8,7 @@ export const demoClassroom: Classroom = {
   owner_id: "demo",
   name: "Room 214 — Demo",
   blacked_out: false,
+  pin_mode: "assigned_desk",
   created_at: new Date(0).toISOString(),
 };
 

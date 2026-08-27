@@ -1,9 +1,57 @@
+export type PinMode = "assigned_desk" | "pin_as_id";
+export type DeskKind = "screen" | "empty";
+
 export type Classroom = {
   id: string;
   owner_id: string;
   name: string;
   blacked_out: boolean;
+  pin_mode: PinMode;
   created_at: string;
+};
+
+export type Desk = {
+  id: string;
+  classroom_id: string;
+  row: number;
+  col: number;
+  kind: DeskKind;
+  label: string | null;
+  screen_token: string | null;
+  created_at: string;
+};
+
+export type Student = {
+  id: string;
+  classroom_id: string;
+  display_name: string;
+  pin: string;
+  desk_id: string | null;
+  blacked_out: boolean;
+  created_at: string;
+};
+
+export function deskLabel(desk: Desk) {
+  const custom = desk.label?.trim();
+  if (custom) return custom;
+  return `Row ${desk.row + 1}, seat ${desk.col + 1}`;
+}
+
+export type OpenDesk = {
+  desk_id: string;
+  classroom_id: string;
+  classroom_name: string;
+  pin_mode: PinMode;
+  seated: boolean;
+};
+
+export type DeskSessionView = {
+  session_token: string;
+  classroom_id: string;
+  classroom_name: string;
+  classroom_blacked_out: boolean;
+  student_blacked_out: boolean;
+  cameras: Camera[];
 };
 
 export type Camera = {
