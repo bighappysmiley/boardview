@@ -40,6 +40,7 @@ export type HardwareRequest = {
 export type TicketStatus = "open" | "closed";
 export type MessageKind = "user" | "staff" | "system" | "note";
 export type StaffRole = "admin" | "staff";
+export type { StaffAccess, StaffPermissions } from "@/lib/permissions";
 
 export type Ticket = {
   id: string;
@@ -60,13 +61,26 @@ export type TicketMessage = {
   body: string;
   kind: MessageKind;
   author_name: string | null;
+  author_title: string | null;
   created_at: string;
 };
 
 export type StaffMember = {
   email: string;
   display_name: string;
+  title: string;
   role: StaffRole;
+  permissions: Record<string, boolean> | null;
+  created_at: string;
+};
+
+export type AuditEntry = {
+  id: string;
+  actor_email: string;
+  action: string;
+  ticket_id: string | null;
+  target: string | null;
+  detail: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -106,14 +120,24 @@ export function formatDateTime(iso: string) {
   });
 }
 
+export function staffLabel(name: string | null, title: string | null) {
+  const who = name?.trim() || "Support";
+  const role = title?.trim();
+  return role ? `${who} · ${role}` : who;
+}
+
 export function messageAuthorLabel(
   message: TicketMessage,
   viewerId: string | undefined,
   visitorName: string | null
 ) {
   if (message.kind === "system") return "System";
-  if (message.kind === "note") return `${message.author_name ?? "Staff"} (private)`;
-  if (message.kind === "staff") return message.author_name ?? "Support";
+  if (message.kind === "note") {
+    return `${staffLabel(message.author_name, message.author_title)} (private)`;
+  }
+  if (message.kind === "staff") {
+    return staffLabel(message.author_name, message.author_title);
+  }
   if (viewerId && message.author_id === viewerId) return "You";
   return message.author_name || visitorName || "Visitor";
 }

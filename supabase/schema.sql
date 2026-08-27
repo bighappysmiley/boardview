@@ -670,3 +670,235 @@ begin
 end
 $$;
 
+-- Customer-facing title (Hillel · Owner) vs access (admin/staff), plus
+-- per-person permissions for what staff can see and do.
+alter table public.staff add column if not exists title text;
+update public.staff set title = 'Support' where title is null;
+alter table public.staff alter column title set default 'Support';
+alter table public.staff alter column title set not null;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'staff_title_len'
+  ) then
+    alter table public.staff
+      add constraint staff_title_len
+      check (char_length(trim(title)) between 1 and 40);
+  end if;
+end $$;
+
+alter table public.staff add column if not exists permissions jsonb;
+update public.staff
+   set permissions = '{"requests":false,"bans":true,"audit":false,"moderate":true}'::jsonb
+ where permissions is null;
+alter table public.staff
+  alter column permissions set default '{"requests":false,"bans":true,"audit":false,"moderate":true}'::jsonb;
+alter table public.staff alter column permissions set not null;
+
+alter table public.ticket_messages add column if not exists author_title text;
+
+update public.staff
+   set display_name = 'Hillel',
+       title = 'Owner'
+ where lower(email) = 'hf@bighappysmiley.com';
+
+create or replace function public.has_perm(p_key text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.is_admin()
+    or exists (
+      select 1 from public.staff
+       where lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+         and coalesce((permissions ->> p_key)::boolean, false)
+    );
+$$;
+
+grant execute on function public.has_perm(text) to anon, authenticated;
+
+create or replace function public.my_staff_profile()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'display_name', display_name,
+    'title', coalesce(title, 'Support'),
+    'role', role,
+    'permissions', coalesce(permissions, '{}'::jsonb)
+  )
+    from public.staff
+   where lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+   limit 1;
+$$;
+
+create or replace function public.set_my_profile(p_name text, p_title text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_staff() then
+    raise exception 'not allowed';
+  end if;
+  if char_length(trim(p_name)) < 1 or char_length(trim(p_name)) > 40 then
+    raise exception 'Name must be 1–40 characters';
+  end if;
+  if char_length(trim(p_title)) < 1 or char_length(trim(p_title)) > 40 then
+    raise exception 'Role must be 1–40 characters';
+  end if;
+  update public.staff
+     set display_name = trim(p_name),
+         title = trim(p_title)
+   where lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''));
+end;
+$$;
+
+grant execute on function public.my_staff_profile() to authenticated;
+grant execute on function public.set_my_profile(text, text) to authenticated;
+
+drop policy if exists "Teachers read own requests, admins read all" on public.requests;
+create policy "Teachers read own requests, admins read all"
+  on public.requests
+  for select
+  using (auth.uid() = owner_id or public.has_perm('requests'));
+
+drop policy if exists "Admins update requests" on public.requests;
+create policy "Admins update requests"
+  on public.requests
+  for update
+  using (public.has_perm('requests'))
+  with check (public.has_perm('requests'));
+
+drop policy if exists "Admins update tickets" on public.tickets;
+create policy "Admins update tickets"
+  on public.tickets
+  for update
+  using (public.has_perm('moderate'))
+  with check (public.has_perm('moderate'));
+
+drop policy if exists "Staff read bans" on public.bans;
+create policy "Staff read bans"
+  on public.bans
+  for select
+  using (public.has_perm('bans'));
+
+drop policy if exists "Staff manage bans" on public.bans;
+create policy "Staff manage bans"
+  on public.bans
+  for all
+  using (public.has_perm('bans'))
+  with check (public.has_perm('bans'));
+
+create or replace function public.ban_visitor(p_ticket uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  t public.tickets;
+begin
+  if not public.has_perm('bans') then
+    raise exception 'not allowed';
+  end if;
+  select * into t from public.tickets where id = p_ticket;
+  if t.id is null then
+    raise exception 'Conversation not found';
+  end if;
+  insert into public.bans (ip, email, visitor_token, ticket_id, created_by_email)
+  values (
+    nullif(t.last_ip, ''),
+    t.contact_email,
+    t.visitor_token,
+    t.id,
+    auth.jwt() ->> 'email'
+  );
+  insert into public.ticket_messages (ticket_id, author_id, body, kind, author_name)
+  values (t.id, null, 'You have been banned.', 'system', null);
+  update public.tickets set status = 'closed' where id = t.id;
+end;
+$$;
+
+create or replace function public.unban_visitor(p_ticket uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  t public.tickets;
+begin
+  if not public.has_perm('bans') then
+    raise exception 'not allowed';
+  end if;
+  select * into t from public.tickets where id = p_ticket;
+  delete from public.bans
+   where ticket_id = p_ticket
+      or (t.last_ip is not null and ip = t.last_ip)
+      or (t.visitor_token is not null and visitor_token = t.visitor_token)
+      or (t.contact_email is not null and lower(email) = lower(t.contact_email));
+  insert into public.ticket_messages (ticket_id, author_id, body, kind, author_name)
+  values (t.id, null, 'Access has been restored.', 'system', null);
+  update public.tickets set status = 'open' where id = t.id;
+end;
+$$;
+
+create table if not exists public.audit_log (
+  id uuid primary key default gen_random_uuid(),
+  actor_email text not null,
+  action text not null,
+  ticket_id uuid references public.tickets (id) on delete set null,
+  target text,
+  detail jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists audit_log_created_at_idx
+  on public.audit_log (created_at desc);
+
+alter table public.audit_log enable row level security;
+
+drop policy if exists "Staff with audit can read the log" on public.audit_log;
+create policy "Staff with audit can read the log"
+  on public.audit_log
+  for select
+  using (public.has_perm('audit'));
+
+grant select on public.audit_log to authenticated;
+
+create or replace function public.write_audit(
+  p_action text,
+  p_ticket uuid default null,
+  p_target text default null,
+  p_detail jsonb default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_staff() then
+    raise exception 'not allowed';
+  end if;
+  insert into public.audit_log (actor_email, action, ticket_id, target, detail)
+  values (
+    coalesce(auth.jwt() ->> 'email', ''),
+    left(trim(p_action), 80),
+    p_ticket,
+    nullif(left(coalesce(p_target, ''), 200), ''),
+    p_detail
+  );
+end;
+$$;
+
+grant execute on function public.write_audit(text, uuid, text, jsonb) to authenticated;
+

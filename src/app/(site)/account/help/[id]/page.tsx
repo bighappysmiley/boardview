@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
+import { CommandMenu, useCommandComposer } from "@/components/CommandMenu";
 import { FormError, TextArea } from "@/components/form";
 import { Container, Section } from "@/components/layout";
 import { SetupNotice } from "@/components/SetupNotice";
@@ -11,17 +12,19 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useSession } from "@/lib/useSession";
 import type { Ticket, TicketMessage } from "@/lib/types";
 import { formatDateTime, messageAuthorLabel } from "@/lib/types";
+import { findCommand, slashMenuQuery } from "@/lib/commands";
 
 export default function TicketThreadPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, isStaff, loading } = useSession();
+  const { user, isStaff, permissions, loading } = useSession();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [reply, setReply] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [ready, setReady] = useState(false);
+  const composer = useCommandComposer(permissions);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -84,10 +87,30 @@ export default function TicketThreadPage() {
   }
 
   const backHref = isStaff ? "/admin" : "/account/help";
+  const canModerate = isStaff && permissions.moderate;
+  const menuOpen = isStaff && slashMenuQuery(reply) !== null;
 
   async function sendReply(event: React.FormEvent) {
     event.preventDefault();
     if (!user || !ticket) return;
+    if (menuOpen) {
+      const token = reply.trim().slice(1);
+      const exact = token && !token.includes(" ") ? findCommand(token) : null;
+      if (!exact) {
+        const items = composer.itemsFor(reply);
+        const picked = items[composer.activeIndex];
+        if (picked) {
+          setReply(composer.pickInsert(picked));
+          composer.setActiveIndex(0);
+        }
+        return;
+      }
+      if (exact.hint) {
+        setReply(composer.pickInsert(exact));
+        composer.setActiveIndex(0);
+        return;
+      }
+    }
     setError(null);
     setSending(true);
     const response = await fetch("/api/support/send", {
@@ -105,9 +128,39 @@ export default function TicketThreadPage() {
     await load();
   }
 
+  function onReplyKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (!isStaff) return;
+    const items = composer.itemsFor(reply);
+    if (items.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      composer.setActiveIndex((current) => (current + 1) % items.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      composer.setActiveIndex(
+        (current) => (current - 1 + items.length) % items.length
+      );
+    } else if (event.key === "Tab") {
+      event.preventDefault();
+      const picked = items[composer.activeIndex] ?? items[0];
+      setReply(composer.pickInsert(picked));
+      composer.setActiveIndex(0);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setReply("");
+    }
+  }
+
   async function setStatus(status: Ticket["status"]) {
     if (!ticket) return;
-    await createClient().from("tickets").update({ status }).eq("id", ticket.id);
+    await fetch("/api/support/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ticketId: ticket.id,
+        body: status === "closed" ? "/close" : "/reopen",
+      }),
+    });
     await load();
   }
 
@@ -125,11 +178,8 @@ export default function TicketThreadPage() {
           {isStaff && ticket.last_ip ? ` · ${ticket.last_ip}` : ""} ·{" "}
           {ticket.status === "open" ? "Open" : "Closed"}
         </p>
-        {isStaff && (
-          <p className="mt-2 text-sm text-muted">
-            Commands: /ban, /unban, /close, /note, /help — they are not shown
-            as your message.
-          </p>
+        {isStaff && ticket.subject !== "Support" && (
+          <p className="mt-1 text-sm text-muted">{ticket.subject}</p>
         )}
 
         <ol className="mt-10 space-y-6">
@@ -160,20 +210,56 @@ export default function TicketThreadPage() {
           </div>
         )}
 
-        {ticket.status === "open" ? (
+        {(ticket.status === "open" || isStaff) && (
           <form onSubmit={sendReply} className="mt-10 space-y-5">
-            <TextArea
-              label="Reply"
-              required
-              maxLength={4000}
-              value={reply}
-              onChange={(e) => setReply(e.target.value)}
-            />
+            {isStaff ? (
+              <div className="relative">
+                <CommandMenu
+                  value={reply}
+                  permissions={permissions}
+                  activeIndex={composer.activeIndex}
+                  onActiveIndex={composer.setActiveIndex}
+                  onPick={(command) => {
+                    setReply(composer.pickInsert(command));
+                    composer.setActiveIndex(0);
+                  }}
+                />
+                <label className="block">
+                  <span className="mb-1.5 block text-sm font-medium">
+                    Reply
+                  </span>
+                  <textarea
+                    required
+                    maxLength={4000}
+                    value={reply}
+                    onChange={(e) => {
+                      setReply(e.target.value);
+                      composer.setActiveIndex(0);
+                    }}
+                    onKeyDown={onReplyKeyDown}
+                    placeholder="Write a reply, or / for commands"
+                    className="min-h-28 w-full resize-y rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-base text-foreground placeholder:text-muted/70 transition-colors hover:border-black/20 focus-visible:border-accent"
+                  />
+                  <span className="mt-1.5 block text-sm text-muted">
+                    Type / to see commands by category. They are not shown as
+                    your message unless they are a saved reply.
+                  </span>
+                </label>
+              </div>
+            ) : (
+              <TextArea
+                label="Reply"
+                required
+                maxLength={4000}
+                value={reply}
+                onChange={(e) => setReply(e.target.value)}
+              />
+            )}
             <div className="flex flex-wrap gap-3">
               <Button type="submit" disabled={sending}>
                 {sending ? "Sending…" : "Reply"}
               </Button>
-              {isStaff && (
+              {canModerate && ticket.status === "open" && (
                 <Button
                   type="button"
                   variant="secondary"
@@ -182,18 +268,17 @@ export default function TicketThreadPage() {
                   Close
                 </Button>
               )}
+              {canModerate && ticket.status === "closed" && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setStatus("open")}
+                >
+                  Reopen
+                </Button>
+              )}
             </div>
           </form>
-        ) : (
-          isStaff && (
-            <Button
-              className="mt-10"
-              variant="secondary"
-              onClick={() => setStatus("open")}
-            >
-              Reopen
-            </Button>
-          )
         )}
       </Container>
     </div>
