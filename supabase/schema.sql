@@ -235,3 +235,20 @@ grant select on public.admins to authenticated;
 grant select, insert, update on public.requests to authenticated;
 grant select, insert, update on public.tickets to authenticated;
 grant select, insert on public.ticket_messages to authenticated;
+
+-- Live replies in the support chat. Guarded like classrooms/cameras above.
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime'
+        and schemaname = 'public'
+        and tablename = 'ticket_messages'
+    ) then
+      alter publication supabase_realtime add table public.ticket_messages;
+    end if;
+  end if;
+end
+$$;
+
