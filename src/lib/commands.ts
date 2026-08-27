@@ -12,7 +12,12 @@ export type CommandDef = {
   hint?: string;
   /** If set, sending the command posts this as your reply. */
   macro?: string;
+  /** After posting the macro, close the conversation. */
+  closes?: boolean;
 };
+
+const CLOSING =
+  "Thank you for contacting BoardView. If you need anything further, please write back here. I am closing this conversation for now.";
 
 export const COMMANDS: CommandDef[] = [
   {
@@ -30,6 +35,20 @@ export const COMMANDS: CommandDef[] = [
   {
     verb: "resolve",
     description: "Close it as resolved",
+    category: "Ticket",
+    perm: "moderate",
+  },
+  {
+    verb: "done",
+    description: "Send a closing message and close",
+    category: "Ticket",
+    perm: "moderate",
+    macro: CLOSING,
+    closes: true,
+  },
+  {
+    verb: "delete",
+    description: "Permanently delete a closed conversation",
     category: "Ticket",
     perm: "moderate",
   },
@@ -77,46 +96,107 @@ export const COMMANDS: CommandDef[] = [
   },
   {
     verb: "hello",
-    description: "Greet them",
+    description: "Open the conversation",
     category: "Replies",
-    macro: "Hi — thanks for writing in. How can I help?",
+    macro:
+      "Thank you for contacting BoardView. How may I help you today?",
   },
   {
-    verb: "thanks",
-    description: "Close out politely",
+    verb: "received",
+    description: "Acknowledge the message",
     category: "Replies",
-    macro: "You’re welcome. Write back here if anything else comes up.",
-  },
-  {
-    verb: "followup",
-    description: "Check whether they still need help",
-    category: "Replies",
-    macro: "Just checking in — is there anything else you need from us?",
+    macro:
+      "Thank you. We have received your message and will reply here.",
   },
   {
     verb: "hold",
-    description: "Say you’re looking into it",
+    description: "You are looking into it",
     category: "Replies",
-    macro: "I’m looking into this and will follow up here shortly.",
+    macro:
+      "Thank you. I am looking into this and will follow up shortly.",
   },
   {
     verb: "away",
-    description: "You’ll pick this up when you’re back",
+    description: "You will continue this later",
     category: "Replies",
-    macro: "I’m stepping away for a bit. I’ll pick this up as soon as I’m back.",
+    macro:
+      "I will continue this conversation as soon as I return.",
   },
   {
     verb: "hours",
-    description: "When you usually reply",
+    description: "When you reply",
     category: "Replies",
-    macro: "We’re usually here during weekday school hours. We’ll reply as soon as we can.",
+    macro:
+      "We reply during weekday school hours and will respond as soon as we are able.",
+  },
+  {
+    verb: "wait",
+    description: "Waiting on a reply from them",
+    category: "Replies",
+    macro:
+      "We will wait to hear back from you. This conversation will remain open.",
+  },
+  {
+    verb: "followup",
+    description: "Follow up on an open conversation",
+    category: "Replies",
+    macro:
+      "I am writing to follow up. Please let us know if we can be of further assistance.",
+  },
+  {
+    verb: "confirm",
+    description: "Ask them to confirm it is resolved",
+    category: "Replies",
+    macro:
+      "Please confirm that this is resolved, and I will close the conversation.",
+  },
+  {
+    verb: "sorry",
+    description: "Apologise",
+    category: "Replies",
+    macro:
+      "I am sorry for the trouble this has caused. We will do our best to put it right.",
+  },
+  {
+    verb: "account",
+    description: "Point them to their account",
+    category: "Replies",
+    macro:
+      "Please sign in to your BoardView account. From there you can manage classrooms and request hardware.",
   },
   {
     verb: "hardware",
-    description: "Point them to a hardware request",
+    description: "How to request hardware",
     category: "Replies",
     macro:
-      "Hardware is requested from your BoardView account. Open Request on the site, tell us the school and how many desk sets you need, and we’ll take it from there.",
+      "Hardware is requested from your BoardView account. Open Request on the site, enter the school and the number of desk sets you need, and we will take it from there.",
+  },
+  {
+    verb: "trial",
+    description: "How to request a trial",
+    category: "Replies",
+    macro:
+      "A trial is requested from your BoardView account. Open Request on the site, choose a trial, and we will follow up.",
+  },
+  {
+    verb: "school",
+    description: "Ask for the school and quantity",
+    category: "Replies",
+    macro:
+      "Please reply with the name of the school and the number of desk sets you need.",
+  },
+  {
+    verb: "thanks",
+    description: "A short closing message",
+    category: "Replies",
+    macro:
+      "You are welcome. Please write back here if you need anything further.",
+  },
+  {
+    verb: "closing",
+    description: "A full closing message",
+    category: "Replies",
+    macro: CLOSING,
   },
 ];
 
@@ -171,7 +251,8 @@ export function helpText(permissions: StaffPermissions) {
   return groups
     .map((group) => {
       const lines = group.items.map(
-        (command) => `/${command.verb}${command.hint ? ` ${command.hint}` : ""} — ${command.description}`
+        (command) =>
+          `/${command.verb}${command.hint ? ` ${command.hint}` : ""} — ${command.description}`
       );
       return `${group.category}\n${lines.join("\n")}`;
     })

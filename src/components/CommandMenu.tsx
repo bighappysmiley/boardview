@@ -39,7 +39,7 @@ export function CommandMenu({
     <div
       role="listbox"
       aria-labelledby={labelId}
-      className="absolute inset-x-0 bottom-full z-20 mb-2 max-h-72 overflow-y-auto rounded-xl border border-black/8 bg-white py-2 shadow-[0_12px_40px_rgba(15,40,80,0.14)]"
+      className="absolute inset-x-0 bottom-full z-20 mb-2 max-h-72 overflow-y-auto rounded-xl border border-black/8 bg-white py-2 shadow-[0_12px_32px_rgba(0,0,0,0.1)]"
     >
       <p id={labelId} className="sr-only">
         Commands
@@ -59,7 +59,7 @@ export function CommandMenu({
                 role="option"
                 aria-selected={active}
                 className={`flex w-full items-baseline justify-between gap-3 rounded-lg px-3 py-1.5 text-left ${
-                  active ? "bg-accent-soft" : "hover:bg-black/[0.03]"
+                  active ? "bg-black/[0.05]" : "hover:bg-black/[0.03]"
                 }`}
                 onMouseEnter={() => onActiveIndex(index)}
                 onMouseDown={(event) => {
@@ -67,7 +67,7 @@ export function CommandMenu({
                   onPick(command);
                 }}
               >
-                <span className="font-medium text-accent">
+                <span className="font-medium">
                   {commandUsage(command)}
                 </span>
                 <span className="truncate text-sm text-muted">

@@ -7,6 +7,7 @@ import { Button } from "@/components/Button";
 import { Container, Section } from "@/components/layout";
 import { FormError, FormNotice, TextField } from "@/components/form";
 import { SetupNotice } from "@/components/SetupNotice";
+import { DeleteClosed } from "@/components/DeleteClosed";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useSession } from "@/lib/useSession";
 import type {
@@ -78,6 +79,7 @@ export default function AdminPage() {
   const canRequests = permissions.requests;
   const canBans = permissions.bans;
   const canAudit = permissions.audit;
+  const canModerate = permissions.moderate;
 
   useEffect(() => {
     Promise.resolve().then(() => {
@@ -235,6 +237,21 @@ export default function AdminPage() {
     setBans((current) => current.filter((row) => row.id !== id));
   }
 
+  async function deleteTicket(id: string) {
+    setError(null);
+    const response = await fetch("/api/support/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketId: id, body: "/delete" }),
+    });
+    const payload = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setError(payload.error ?? "We couldn't delete that.");
+      return;
+    }
+    setTickets((current) => current.filter((row) => row.id !== id));
+  }
+
   if (!isSupabaseConfigured) return <SetupNotice what="Inbox" />;
 
   if (loading || !isStaff || !ready) {
@@ -262,7 +279,7 @@ export default function AdminPage() {
   return (
     <div className="py-16 sm:py-20">
       <Container size="wide">
-        <p className="text-sm font-medium text-accent">
+        <p className="text-sm text-muted">
           {isAdmin ? "Admin" : "Staff"}
         </p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -287,7 +304,7 @@ export default function AdminPage() {
                 key={item.id}
                 type="button"
                 onClick={() => setTab(item.id)}
-                className={tab === item.id ? "font-medium text-accent" : "text-muted"}
+                className={tab === item.id ? "font-medium text-foreground" : "text-muted"}
               >
                 {item.label}
               </button>
@@ -317,9 +334,14 @@ export default function AdminPage() {
                     {formatWhen(ticket.created_at)}
                   </p>
                 </div>
-                <span className="text-sm text-muted">
-                  {ticket.status === "open" ? "Open" : "Closed"}
-                </span>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-sm text-muted">
+                    {ticket.status === "open" ? "Open" : "Closed"}
+                  </span>
+                  {canModerate && ticket.status === "closed" && (
+                    <DeleteClosed onDelete={() => deleteTicket(ticket.id)} />
+                  )}
+                </div>
               </li>
             ))}
           </ul>

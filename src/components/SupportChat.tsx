@@ -233,13 +233,13 @@ export function SupportChat() {
           role="dialog"
           aria-modal="false"
           aria-labelledby={titleId}
-          className="pointer-events-auto mb-3 flex h-[min(30rem,72vh)] w-[min(22.5rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-black/8 bg-white shadow-[0_16px_50px_rgba(15,40,80,0.16)]"
+      className="pointer-events-auto mb-3 flex h-[min(30rem,72vh)] w-[min(22.5rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-black/8 bg-white shadow-[0_16px_40px_rgba(0,0,0,0.12)]"
         >
-          <div className="bg-accent px-4 py-3 text-white">
+          <div className="border-b border-black/8 px-4 py-3">
             <h2 id={titleId} className="text-[0.95rem] font-semibold">
               Support
             </h2>
-            <p className="mt-0.5 text-sm text-white/80">
+            <p className="mt-0.5 text-sm text-muted">
               We usually reply here. We’ll also have your email.
             </p>
           </div>
@@ -322,10 +322,10 @@ export function SupportChat() {
                       <p
                         className={`mt-1 whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-relaxed ${
                           system
-                            ? "bg-accent-soft text-foreground"
+                            ? "bg-black/[0.04] text-foreground"
                             : mine
-                              ? "bg-accent text-white"
-                              : "border border-black/8 bg-accent-soft"
+                              ? "bg-foreground text-white"
+                              : "border border-black/8 bg-white"
                         }`}
                       >
                         {message.body}
@@ -380,7 +380,7 @@ export function SupportChat() {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((current) => !current)}
-        className="pointer-events-auto relative flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-[0_8px_24px_rgba(0,113,227,0.35)] hover:bg-accent-hover"
+        className="pointer-events-auto relative flex h-14 w-14 items-center justify-center rounded-full bg-foreground text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] hover:bg-black"
       >
         {open ? <CloseIcon /> : <ChatIcon />}
         {unread && !open && (

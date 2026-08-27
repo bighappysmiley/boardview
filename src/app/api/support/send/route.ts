@@ -159,8 +159,31 @@ export async function POST(request: Request) {
         if (error) {
           return NextResponse.json({ error: error.message }, { status: 400 });
         }
+        if (def.closes) {
+          await supabaseAuth
+            .from("tickets")
+            .update({ status: "closed" })
+            .eq("id", ticketId);
+        }
         await audit(supabaseAuth, verb, ticketId, row?.contact_email);
         return NextResponse.json({ ok: true, command: verb });
+      }
+
+      if (verb === "delete") {
+        if (row?.status !== "closed") {
+          return NextResponse.json(
+            { error: "Close the conversation before deleting it." },
+            { status: 400 }
+          );
+        }
+        await audit(supabaseAuth, "delete", ticketId, row.contact_email);
+        const { error } = await supabaseAuth.rpc("delete_closed_ticket", {
+          p_ticket: ticketId,
+        });
+        if (error) {
+          return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        return NextResponse.json({ ok: true, command: "delete" });
       }
 
       if (verb === "ban" || verb === "spam") {

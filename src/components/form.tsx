@@ -40,7 +40,7 @@ export function FormError({ message }: { message: string }) {
 
 export function FormNotice({ message }: { message: string }) {
   return (
-    <p role="status" className="rounded-lg bg-accent-soft px-4 py-3 text-sm text-foreground">
+    <p role="status" className="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-foreground">
       {message}
     </p>
   );

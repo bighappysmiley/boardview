@@ -902,3 +902,28 @@ $$;
 
 grant execute on function public.write_audit(text, uuid, text, jsonb) to authenticated;
 
+create or replace function public.delete_closed_ticket(p_ticket uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  t public.tickets;
+begin
+  if not public.has_perm('moderate') then
+    raise exception 'not allowed';
+  end if;
+  select * into t from public.tickets where id = p_ticket;
+  if t.id is null then
+    raise exception 'Conversation not found';
+  end if;
+  if t.status <> 'closed' then
+    raise exception 'Close the conversation before deleting it.';
+  end if;
+  delete from public.tickets where id = p_ticket;
+end;
+$$;
+
+grant execute on function public.delete_closed_ticket(uuid) to authenticated;
+

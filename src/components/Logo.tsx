@@ -3,7 +3,7 @@ type LogoProps = {
   withWordmark?: boolean;
 };
 
-/** Classroom board over a smaller desk screen. Accent blue, no mascot. */
+/** Classroom board over a smaller desk screen. Ink, no mascot. */
 export function LogoMark({ className = "h-7 w-7" }: { className?: string }) {
   return (
     <svg
@@ -12,8 +12,8 @@ export function LogoMark({ className = "h-7 w-7" }: { className?: string }) {
       role="img"
       aria-label="BoardView"
     >
-      <rect x="4" y="6" width="24" height="14" rx="2.5" fill="#0071e3" />
-      <rect x="10" y="22" width="12" height="5.5" rx="1.5" fill="#0071e3" />
+      <rect x="4" y="6" width="24" height="14" rx="2.5" fill="currentColor" />
+      <rect x="10" y="22" width="12" height="5.5" rx="1.5" fill="currentColor" />
     </svg>
   );
 }

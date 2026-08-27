@@ -9,8 +9,8 @@ const base =
 const variants: Record<Variant, string> = {
   primary: "bg-accent text-white hover:bg-accent-hover",
   secondary:
-    "border border-black/10 bg-white text-foreground hover:bg-accent-soft",
-  ghost: "text-muted hover:bg-accent-soft hover:text-foreground",
+    "border border-black/10 bg-white text-foreground hover:bg-black/[0.04]",
+  ghost: "text-muted hover:bg-black/[0.04] hover:text-foreground",
 };
 
 export function Button({

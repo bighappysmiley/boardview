@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { CommandMenu, useCommandComposer } from "@/components/CommandMenu";
+import { DeleteClosed } from "@/components/DeleteClosed";
 import { FormError, TextArea } from "@/components/form";
 import { Container, Section } from "@/components/layout";
 import { SetupNotice } from "@/components/SetupNotice";
@@ -12,7 +13,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useSession } from "@/lib/useSession";
 import type { Ticket, TicketMessage } from "@/lib/types";
 import { formatDateTime, messageAuthorLabel } from "@/lib/types";
-import { findCommand, slashMenuQuery } from "@/lib/commands";
+import { findCommand, slashMenuQuery, type CommandDef } from "@/lib/commands";
 
 export default function TicketThreadPage() {
   const params = useParams<{ id: string }>();
@@ -25,6 +26,7 @@ export default function TicketThreadPage() {
   const [sending, setSending] = useState(false);
   const [ready, setReady] = useState(false);
   const composer = useCommandComposer(permissions);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -57,6 +59,44 @@ export default function TicketThreadPage() {
     };
   }, [user, loading, load, router]);
 
+  useEffect(() => {
+    if (!ready || !isStaff) return;
+    replyRef.current?.focus();
+  }, [ready, isStaff]);
+
+  const backHref = isStaff ? "/admin" : "/account/help";
+
+  const sendBody = useCallback(
+    async (text: string) => {
+      if (!ticket) return;
+      const body = text.trim();
+      if (!body) return;
+      setError(null);
+      setSending(true);
+      const response = await fetch("/api/support/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ticketId: ticket.id, body }),
+      });
+      const payload = (await response.json()) as {
+        error?: string;
+        command?: string;
+      };
+      setSending(false);
+      if (!response.ok) {
+        setError(payload.error ?? "We couldn't send that.");
+        return;
+      }
+      if (payload.command === "delete") {
+        router.push(backHref);
+        return;
+      }
+      setReply("");
+      await load();
+    },
+    [ticket, load, router, backHref]
+  );
+
   if (!isSupabaseConfigured) return <SetupNotice what="Support" />;
 
   if (loading) {
@@ -79,14 +119,13 @@ export default function TicketThreadPage() {
     return (
       <Section size="narrow">
         <p className="text-muted">We couldn&apos;t find that request.</p>
-        <Link href="/account/help" className="mt-4 inline-block text-accent">
+        <Link href="/account/help" className="mt-4 inline-block font-medium hover:underline">
           Back to support
         </Link>
       </Section>
     );
   }
 
-  const backHref = isStaff ? "/admin" : "/account/help";
   const canModerate = isStaff && permissions.moderate;
   const menuOpen = isStaff && slashMenuQuery(reply) !== null;
 
@@ -99,10 +138,7 @@ export default function TicketThreadPage() {
       if (!exact) {
         const items = composer.itemsFor(reply);
         const picked = items[composer.activeIndex];
-        if (picked) {
-          setReply(composer.pickInsert(picked));
-          composer.setActiveIndex(0);
-        }
+        if (picked) applyCommand(picked);
         return;
       }
       if (exact.hint) {
@@ -111,57 +147,56 @@ export default function TicketThreadPage() {
         return;
       }
     }
-    setError(null);
-    setSending(true);
-    const response = await fetch("/api/support/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ticketId: ticket.id, body: reply.trim() }),
-    });
-    const payload = (await response.json()) as { error?: string };
-    setSending(false);
-    if (!response.ok) {
-      setError(payload.error ?? "We couldn't send that.");
+    await sendBody(reply);
+  }
+
+  function applyCommand(command: CommandDef) {
+    if (command.hint) {
+      setReply(composer.pickInsert(command));
+      composer.setActiveIndex(0);
       return;
     }
-    setReply("");
-    await load();
+    void sendBody(`/${command.verb}`);
   }
 
   function onReplyKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (!isStaff) return;
-    const items = composer.itemsFor(reply);
-    if (items.length === 0) return;
-    if (event.key === "ArrowDown") {
+    const items = isStaff ? composer.itemsFor(reply) : [];
+    if (items.length > 0) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        composer.setActiveIndex((current) => (current + 1) % items.length);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        composer.setActiveIndex(
+          (current) => (current - 1 + items.length) % items.length
+        );
+        return;
+      }
+      if (event.key === "Tab") {
+        event.preventDefault();
+        applyCommand(items[composer.activeIndex] ?? items[0]);
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setReply("");
+        return;
+      }
+    }
+    if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
-      composer.setActiveIndex((current) => (current + 1) % items.length);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      composer.setActiveIndex(
-        (current) => (current - 1 + items.length) % items.length
-      );
-    } else if (event.key === "Tab") {
-      event.preventDefault();
-      const picked = items[composer.activeIndex] ?? items[0];
-      setReply(composer.pickInsert(picked));
-      composer.setActiveIndex(0);
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      setReply("");
+      event.currentTarget.form?.requestSubmit();
     }
   }
 
   async function setStatus(status: Ticket["status"]) {
-    if (!ticket) return;
-    await fetch("/api/support/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ticketId: ticket.id,
-        body: status === "closed" ? "/close" : "/reopen",
-      }),
-    });
-    await load();
+    await sendBody(status === "closed" ? "/close" : "/reopen");
+  }
+
+  async function deleteClosed() {
+    await sendBody("/delete");
   }
 
   return (
@@ -211,7 +246,7 @@ export default function TicketThreadPage() {
         )}
 
         {(ticket.status === "open" || isStaff) && (
-          <form onSubmit={sendReply} className="mt-10 space-y-5">
+          <form onSubmit={sendReply} className="mt-10 space-y-4">
             {isStaff ? (
               <div className="relative">
                 <CommandMenu
@@ -219,16 +254,14 @@ export default function TicketThreadPage() {
                   permissions={permissions}
                   activeIndex={composer.activeIndex}
                   onActiveIndex={composer.setActiveIndex}
-                  onPick={(command) => {
-                    setReply(composer.pickInsert(command));
-                    composer.setActiveIndex(0);
-                  }}
+                  onPick={applyCommand}
                 />
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-medium">
                     Reply
                   </span>
                   <textarea
+                    ref={replyRef}
                     required
                     maxLength={4000}
                     value={reply}
@@ -238,11 +271,11 @@ export default function TicketThreadPage() {
                     }}
                     onKeyDown={onReplyKeyDown}
                     placeholder="Write a reply, or / for commands"
-                    className="min-h-28 w-full resize-y rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-base text-foreground placeholder:text-muted/70 transition-colors hover:border-black/20 focus-visible:border-accent"
+                    className="min-h-24 w-full resize-y rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-base text-foreground placeholder:text-muted/70 transition-colors hover:border-black/20 focus-visible:border-foreground"
                   />
                   <span className="mt-1.5 block text-sm text-muted">
-                    Type / to see commands by category. They are not shown as
-                    your message unless they are a saved reply.
+                    Enter to send. Shift+Enter for a new line. Type / for
+                    commands.
                   </span>
                 </label>
               </div>
@@ -253,11 +286,13 @@ export default function TicketThreadPage() {
                 maxLength={4000}
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
+                onKeyDown={onReplyKeyDown}
+                hint="Enter to send. Shift+Enter for a new line."
               />
             )}
             <div className="flex flex-wrap gap-3">
               <Button type="submit" disabled={sending}>
-                {sending ? "Sending…" : "Reply"}
+                {sending ? "Sending…" : "Send"}
               </Button>
               {canModerate && ticket.status === "open" && (
                 <Button
@@ -269,13 +304,16 @@ export default function TicketThreadPage() {
                 </Button>
               )}
               {canModerate && ticket.status === "closed" && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setStatus("open")}
-                >
-                  Reopen
-                </Button>
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setStatus("open")}
+                  >
+                    Reopen
+                  </Button>
+                  <DeleteClosed onDelete={deleteClosed} disabled={sending} />
+                </>
               )}
             </div>
           </form>
