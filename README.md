@@ -23,12 +23,14 @@ a Next.js app meant to be hosted free on Netlify.
 - **Request** (`/request`) — signed-in schools submit a classroom trial or
   hardware request (quantities and notes). There is no cart or checkout.
   `/shop` and `/pricing` redirect here.
-- **Support** (`/account/help`) — open a ticket; replies live on the thread.
-  A floating chat on every public and account page uses the same tickets, so
-  Admin sees those messages too. The student desk screen (`/screen/...`) has
-  no chat, so it doesn't cover the board.
-- **Admin** (`/admin`) — emails listed in `public.admins` can review requests
-  (status) and support tickets (reply, close).
+- **Support** (`/account/help`) — conversations with a name and email form in
+  the floating chat, like a typical support widget. Staff replies show each
+  person’s display name, not “BoardView”. Commands such as `/ban` are not
+  shown as chat; the visitor is told they have been banned, and that network
+  cannot use the site.
+- **Admin / Inbox** (`/admin`) — **Admin** can do everything (requests, team
+  roles, bans). **Staff** can handle support. Set the name visitors see under
+  Your name. Add people by email before they have an account.
 - **Teacher controls** (`/account`, `/account/classrooms/[id]`) — create a
   classroom, add cameras, rename and reorder them, and hide the board. A live
   preview shows exactly what the student is seeing.
@@ -66,13 +68,15 @@ Open http://localhost:3000.
    `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 3. Open **Database → SQL Editor**, paste in
    [`supabase/schema.sql`](supabase/schema.sql), and run it. That creates
-   `classrooms`, `cameras`, `admins`, `requests`, `tickets`, and
-   `ticket_messages`, with row-level security. **Re-run this file after
-   pulling schema changes** — it is written to be safe to run again.
+   classrooms, cameras, staff, requests, tickets, messages, and bans.
+   **Re-run this file after pulling schema changes** — it is written to be
+   safe to run again.
 4. After you have signed up once, make your login an admin:
 
    ```sql
-   insert into public.admins (email) values ('you@example.com');
+   insert into public.staff (email, display_name, role)
+   values ('you@example.com', 'Your name', 'admin')
+   on conflict (email) do update set role = 'admin';
    ```
 
 5. In **Authentication → URL Configuration**, add your site's URL (and

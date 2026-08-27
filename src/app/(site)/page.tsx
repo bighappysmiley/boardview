@@ -54,7 +54,7 @@ const views = ["Front whiteboard", "Side whiteboard", "Poster"];
 export default function Home() {
   return (
     <>
-      <Section className="!pt-20 sm:!pt-28">
+      <Section className="hero-wash !pt-20 sm:!pt-28">
         <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-[3.4rem] lg:leading-[1.08]">
           The board, at their desk.
         </h1>

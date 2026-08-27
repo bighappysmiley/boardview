@@ -2,31 +2,75 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useSession } from "@/lib/useSession";
-import type { Ticket, TicketMessage } from "@/lib/types";
+import type { TicketMessage } from "@/lib/types";
+import { messageAuthorLabel } from "@/lib/types";
+import { TextField } from "@/components/form";
+
+const STORAGE_KEY = "bv_support";
+
+type Saved = {
+  token: string;
+  name: string;
+  email: string;
+  ticketId: string;
+};
+
+function readSaved(): Saved | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Saved;
+    if (parsed.token && parsed.ticketId && parsed.name && parsed.email) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function writeSaved(value: Saved) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+}
 
 export function SupportChat() {
-  const pathname = usePathname();
-  const { user, loading } = useSession();
+  const { user, isStaff, loading } = useSession();
+  const router = useRouter();
   const panelId = useId();
   const titleId = useId();
   const [open, setOpen] = useState(false);
-  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [ticketId, setTicketId] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ready, setReady] = useState(!isSupabaseConfigured);
+  const [ready, setReady] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const loginNext =
-    pathname.startsWith("/login") || pathname.startsWith("/signup")
-      ? "/account"
-      : pathname;
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      const saved = readSaved();
+      if (saved) {
+        setName(saved.name);
+        setEmail(saved.email);
+        setToken(saved.token);
+        setTicketId(saved.ticketId);
+      } else if (user?.email) {
+        setEmail(user.email);
+        const full = user.user_metadata?.full_name as string | undefined;
+        if (full) setName(full);
+      }
+      setReady(true);
+    });
+  }, [user]);
 
   useEffect(() => {
     if (!open) return;
@@ -41,63 +85,38 @@ export function SupportChat() {
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !ticketId) return;
     inputRef.current?.focus();
-  }, [open, user, ready]);
+  }, [open, ticketId]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !user) return;
+    if (!isSupabaseConfigured || !ticketId || !token) return;
     let active = true;
     const supabase = createClient();
-    Promise.resolve().then(async () => {
-      if (!active) return;
-      setReady(false);
-      const { data } = await supabase
-        .from("tickets")
-        .select("*")
-        .eq("owner_id", user.id)
-        .eq("status", "open")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!active) return;
-      const nextTicket = (data as Ticket | null) ?? null;
-      setTicket(nextTicket);
-      if (!nextTicket) {
-        setMessages([]);
-        setReady(true);
-        return;
-      }
-      const { data: rows } = await supabase
-        .from("ticket_messages")
-        .select("*")
-        .eq("ticket_id", nextTicket.id)
-        .order("created_at");
-      if (!active) return;
-      setMessages((rows ?? []) as TicketMessage[]);
-      setReady(true);
-    });
 
-    return () => {
-      active = false;
-    };
-  }, [user]);
+    async function load() {
+      const { data } = await supabase.rpc("list_support_messages", {
+        p_ticket: ticketId,
+        p_token: token,
+      });
+      if (active) setMessages((data ?? []) as TicketMessage[]);
+    }
 
-  useEffect(() => {
-    if (!isSupabaseConfigured || !ticket?.id) return;
-    const supabase = createClient();
+    Promise.resolve().then(load);
+    const interval = window.setInterval(() => void load(), 3000);
     const channel = supabase
-      .channel(`support:${ticket.id}`)
+      .channel(`support:${ticketId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "ticket_messages",
-          filter: `ticket_id=eq.${ticket.id}`,
+          filter: `ticket_id=eq.${ticketId}`,
         },
         (payload) => {
           const row = payload.new as TicketMessage;
+          if (row.kind === "note") return;
           setMessages((current) =>
             current.some((message) => message.id === row.id)
               ? current
@@ -106,10 +125,13 @@ export function SupportChat() {
         }
       )
       .subscribe();
+
     return () => {
+      active = false;
+      window.clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [ticket?.id]);
+  }, [ticketId, token]);
 
   useEffect(() => {
     if (!open) return;
@@ -117,62 +139,78 @@ export function SupportChat() {
     if (list) list.scrollTop = list.scrollHeight;
   }, [open, messages.length]);
 
-  const lastMessage = messages[messages.length - 1];
-  const unread =
-    Boolean(user && lastMessage && lastMessage.author_id !== user.id);
+  const lastVisible = [...messages].reverse().find((m) => m.kind !== "note");
+  const unread = Boolean(
+    lastVisible && lastVisible.kind !== "user" && !open
+  );
+
+  async function startConversation(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setSending(true);
+    const response = await fetch("/api/support/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, token }),
+    });
+    const payload = (await response.json()) as {
+      token?: string;
+      ticketId?: string;
+      error?: string;
+    };
+    setSending(false);
+    if (payload.error === "banned" || response.status === 403) {
+      router.push("/banned");
+      return;
+    }
+    if (!response.ok || !payload.ticketId || !payload.token) {
+      setError(payload.error ?? "We couldn't start that.");
+      return;
+    }
+    setToken(payload.token);
+    setTicketId(payload.ticketId);
+    writeSaved({
+      token: payload.token,
+      name: name.trim(),
+      email: email.trim(),
+      ticketId: payload.ticketId,
+    });
+  }
 
   async function send(event: React.FormEvent) {
     event.preventDefault();
     const text = draft.trim();
-    if (!text || !user?.email) return;
-
+    if (!text || !ticketId || !token) return;
     setError(null);
     setSending(true);
-    const supabase = createClient();
-    let ticketId = ticket?.id;
-
-    if (!ticketId) {
-      const subject = text.length > 80 ? `${text.slice(0, 77)}…` : text;
-      const { data, error: ticketError } = await supabase
-        .from("tickets")
-        .insert({
-          owner_id: user.id,
-          contact_email: user.email,
-          subject,
-        })
-        .select("*")
-        .single();
-      if (ticketError || !data) {
-        setSending(false);
-        setError(ticketError?.message ?? "We couldn't send that.");
-        return;
-      }
-      ticketId = data.id;
-      setTicket(data as Ticket);
-    }
-
-    const { data: inserted, error: messageError } = await supabase
-      .from("ticket_messages")
-      .insert({
-        ticket_id: ticketId,
-        author_id: user.id,
+    const response = await fetch("/api/support/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ticketId,
+        token,
+        name,
         body: text,
-      })
-      .select("*")
-      .single();
+      }),
+    });
+    const payload = (await response.json()) as {
+      error?: string;
+      message?: TicketMessage;
+    };
     setSending(false);
-
-    if (messageError) {
-      setError(messageError.message);
+    if (payload.error === "banned" || response.status === 403) {
+      router.push("/banned");
       return;
     }
-
-    if (inserted) {
-      const row = inserted as TicketMessage;
+    if (!response.ok) {
+      setError(payload.error ?? "We couldn't send that.");
+      return;
+    }
+    if (payload.message) {
       setMessages((current) =>
-        current.some((message) => message.id === row.id)
+        current.some((message) => message.id === payload.message!.id)
           ? current
-          : [...current, row]
+          : [...current, payload.message!]
       );
     }
     setDraft("");
@@ -185,6 +223,8 @@ export function SupportChat() {
     }
   }
 
+  const inChat = Boolean(ticketId && token);
+
   return (
     <div className="pointer-events-none fixed right-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-[60] flex flex-col items-end sm:right-6 sm:bottom-6">
       {open && (
@@ -193,19 +233,21 @@ export function SupportChat() {
           role="dialog"
           aria-modal="false"
           aria-labelledby={titleId}
-          className="pointer-events-auto mb-3 flex h-[min(28rem,70vh)] w-[min(22.5rem,calc(100vw-2rem))] flex-col rounded-xl border border-black/10 bg-white shadow-[0_12px_40px_rgba(0,0,0,0.12)]"
+          className="pointer-events-auto mb-3 flex h-[min(30rem,72vh)] w-[min(22.5rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-black/8 bg-white shadow-[0_16px_50px_rgba(15,40,80,0.16)]"
         >
-          <div className="flex items-center justify-between border-b border-black/10 px-4 py-3">
+          <div className="bg-accent px-4 py-3 text-white">
             <h2 id={titleId} className="text-[0.95rem] font-semibold">
               Support
             </h2>
-            <p className="text-sm text-muted">BoardView</p>
+            <p className="mt-0.5 text-sm text-white/80">
+              We usually reply here. We’ll also have your email.
+            </p>
           </div>
 
           <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
             {!isSupabaseConfigured ? (
               <p className="text-sm leading-relaxed text-muted">
-                Chat isn&apos;t available yet. Email{" "}
+                Chat isn’t available yet. Email{" "}
                 <a
                   href="mailto:hello@boardview.org"
                   className="font-medium text-accent hover:underline"
@@ -214,56 +256,76 @@ export function SupportChat() {
                 </a>
                 .
               </p>
-            ) : loading || (user && !ready) ? (
+            ) : loading || !ready ? (
               <p className="text-sm text-muted">One moment…</p>
-            ) : !user ? (
+            ) : isStaff ? (
               <div className="space-y-3 text-sm leading-relaxed">
                 <p className="text-muted">
-                  Create an account first. Then you can chat with us here —
-                  we&apos;ll reply on this same conversation.
+                  Reply from the inbox so your name is the one visitors see.
                 </p>
-                <p>
-                  <Link
-                    href="/signup"
-                    className="font-medium text-accent hover:underline"
-                  >
-                    Create an account
-                  </Link>
-                  <span className="text-muted"> · </span>
-                  <Link
-                    href={`/login?next=${encodeURIComponent(loginNext)}`}
-                    className="font-medium text-accent hover:underline"
-                  >
-                    Log in
-                  </Link>
-                </p>
-              </div>
-            ) : messages.length === 0 ? (
-              <p className="text-sm leading-relaxed text-muted">
-                Send a message and we&apos;ll reply here. For something urgent,
-                email{" "}
-                <a
-                  href="mailto:hello@boardview.org"
+                <Link
+                  href="/admin"
                   className="font-medium text-accent hover:underline"
                 >
-                  hello@boardview.org
-                </a>
-                .
+                  Open inbox
+                </Link>
+              </div>
+            ) : !inChat ? (
+              <form onSubmit={startConversation} className="space-y-3">
+                <p className="text-sm leading-relaxed text-muted">
+                  Leave your name and email so we can write back if you close
+                  this window.
+                </p>
+                <TextField
+                  label="Name"
+                  required
+                  maxLength={80}
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                <TextField
+                  label="Email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                {error && (
+                  <p role="alert" className="text-sm font-medium text-red-800">
+                    {error}
+                  </p>
+                )}
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="w-full rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+                >
+                  {sending ? "Starting…" : "Start conversation"}
+                </button>
+              </form>
+            ) : messages.length === 0 ? (
+              <p className="text-sm leading-relaxed text-muted">
+                Send a message and we’ll reply here.
               </p>
             ) : (
               <ol className="space-y-3">
                 {messages.map((message) => {
-                  const mine = message.author_id === user.id;
+                  const mine = message.kind === "user";
+                  const system = message.kind === "system";
                   return (
                     <li key={message.id}>
                       <p className="text-xs text-muted">
-                        {mine ? "You" : "BoardView"}
+                        {messageAuthorLabel(message, user?.id, name)}
                       </p>
                       <p
-                        className={`mt-1 whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-relaxed ${
-                          mine
-                            ? "bg-foreground text-white"
-                            : "border border-black/10 bg-accent-soft"
+                        className={`mt-1 whitespace-pre-wrap rounded-xl px-3 py-2 text-sm leading-relaxed ${
+                          system
+                            ? "bg-accent-soft text-foreground"
+                            : mine
+                              ? "bg-accent text-white"
+                              : "border border-black/8 bg-accent-soft"
                         }`}
                       >
                         {message.body}
@@ -273,18 +335,15 @@ export function SupportChat() {
                 })}
               </ol>
             )}
-            {error && (
+            {inChat && error && (
               <p role="alert" className="mt-3 text-sm font-medium text-red-800">
                 {error}
               </p>
             )}
           </div>
 
-          {isSupabaseConfigured && user && (
-            <form
-              onSubmit={send}
-              className="border-t border-black/10 p-3"
-            >
+          {isSupabaseConfigured && inChat && !isStaff && (
+            <form onSubmit={send} className="border-t border-black/8 p-3">
               <label className="sr-only" htmlFor={`${panelId}-draft`}>
                 Message
               </label>
@@ -304,7 +363,7 @@ export function SupportChat() {
                 <button
                   type="submit"
                   disabled={sending || !draft.trim()}
-                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-foreground px-3.5 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
+                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg bg-accent px-3.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
                 >
                   {sending ? "…" : "Send"}
                 </button>
@@ -321,11 +380,11 @@ export function SupportChat() {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((current) => !current)}
-        className="pointer-events-auto relative flex h-14 w-14 items-center justify-center rounded-full bg-foreground text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] hover:bg-black"
+        className="pointer-events-auto relative flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-[0_8px_24px_rgba(0,113,227,0.35)] hover:bg-accent-hover"
       >
         {open ? <CloseIcon /> : <ChatIcon />}
         {unread && !open && (
-          <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-accent">
+          <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-white">
             <span className="sr-only">New reply</span>
           </span>
         )}
@@ -336,13 +395,7 @@ export function SupportChat() {
 
 function ChatIcon() {
   return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v7A2.5 2.5 0 0 1 16.5 16H10l-4.2 3.15A.75.75 0 0 1 4.5 18.5V6.5Z"
         stroke="currentColor"
@@ -355,13 +408,7 @@ function ChatIcon() {
 
 function CloseIcon() {
   return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M6 6l12 12M18 6 6 18"
         stroke="currentColor"

@@ -13,11 +13,11 @@ const links = [
 ];
 
 export function Navbar() {
-  const { user, isAdmin } = useSession();
+  const { user, isAdmin, isStaff } = useSession();
   const signedIn = Boolean(user);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-black/10 bg-background">
+    <header className="sticky top-0 z-50 border-b border-black/8 bg-white/80 backdrop-blur-md">
       <Container>
         <nav aria-label="Primary" className="flex h-14 items-center justify-between gap-4">
           <Link href="/" className="shrink-0 rounded-md py-1">
@@ -39,12 +39,12 @@ export function Navbar() {
           <div className="flex shrink-0 items-center gap-3">
             {isSupabaseConfigured && signedIn ? (
               <>
-                {isAdmin && (
+                {(isAdmin || isStaff) && (
                   <Link
                     href="/admin"
                     className="hidden text-[0.95rem] text-muted hover:text-foreground sm:block"
                   >
-                    Admin
+                    {isAdmin ? "Admin" : "Inbox"}
                   </Link>
                 )}
                 <ButtonLink href="/account" variant="secondary">

@@ -10,9 +10,7 @@ export type Camera = {
   id: string;
   classroom_id: string;
   label: string;
-  /** Image/MJPEG URL the camera publishes. Null until hardware is paired. */
   stream_url: string | null;
-  /** Order the screen's "Next view" button cycles through. */
   position: number;
   created_at: string;
 };
@@ -40,21 +38,45 @@ export type HardwareRequest = {
 };
 
 export type TicketStatus = "open" | "closed";
+export type MessageKind = "user" | "staff" | "system" | "note";
+export type StaffRole = "admin" | "staff";
 
 export type Ticket = {
   id: string;
-  owner_id: string;
+  owner_id: string | null;
   contact_email: string;
   subject: string;
   status: TicketStatus;
+  visitor_name: string | null;
+  visitor_token: string | null;
+  last_ip: string | null;
   created_at: string;
 };
 
 export type TicketMessage = {
   id: string;
   ticket_id: string;
-  author_id: string;
+  author_id: string | null;
   body: string;
+  kind: MessageKind;
+  author_name: string | null;
+  created_at: string;
+};
+
+export type StaffMember = {
+  email: string;
+  display_name: string;
+  role: StaffRole;
+  created_at: string;
+};
+
+export type Ban = {
+  id: string;
+  ip: string | null;
+  email: string | null;
+  visitor_token: string | null;
+  ticket_id: string | null;
+  created_by_email: string | null;
   created_at: string;
 };
 
@@ -82,4 +104,16 @@ export function formatDateTime(iso: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+export function messageAuthorLabel(
+  message: TicketMessage,
+  viewerId: string | undefined,
+  visitorName: string | null
+) {
+  if (message.kind === "system") return "System";
+  if (message.kind === "note") return `${message.author_name ?? "Staff"} (private)`;
+  if (message.kind === "staff") return message.author_name ?? "Support";
+  if (viewerId && message.author_id === viewerId) return "You";
+  return message.author_name || visitorName || "Visitor";
 }

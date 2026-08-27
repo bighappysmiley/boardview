@@ -1,15 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f5f5f7;
   --foreground: #1d1d1f;
   --muted: #6e6e73;
   --accent: #0071e3;
   --accent-hover: #0077ed;
-  --accent-soft: #f5f5f7;
+  --accent-soft: #eaf3fc;
   --accent-contrast: #ffffff;
   --screen: #0b0d12;
   --hairline: rgba(0, 0, 0, 0.08);
+  --surface: #ffffff;
 }
 
 @theme inline {
@@ -17,9 +18,11 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
   --color-accent-contrast: var(--accent-contrast);
   --color-screen: var(--screen);
+  --color-surface: var(--surface);
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
@@ -86,4 +89,14 @@ h3 {
 
 .skip-link:focus {
   top: 1rem;
+}
+
+.hero-wash {
+  background:
+    radial-gradient(
+      900px 420px at 12% -20%,
+      rgba(0, 113, 227, 0.14),
+      transparent 55%
+    ),
+    #ffffff;
 }

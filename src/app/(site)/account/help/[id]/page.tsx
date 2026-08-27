@@ -10,12 +10,12 @@ import { SetupNotice } from "@/components/SetupNotice";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useSession } from "@/lib/useSession";
 import type { Ticket, TicketMessage } from "@/lib/types";
-import { formatDateTime } from "@/lib/types";
+import { formatDateTime, messageAuthorLabel } from "@/lib/types";
 
 export default function TicketThreadPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { user, isAdmin, loading } = useSession();
+  const { user, isStaff, loading } = useSession();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [reply, setReply] = useState("");
@@ -83,23 +83,22 @@ export default function TicketThreadPage() {
     );
   }
 
-  const backHref = isAdmin ? "/admin" : "/account/help";
+  const backHref = isStaff ? "/admin" : "/account/help";
 
   async function sendReply(event: React.FormEvent) {
     event.preventDefault();
     if (!user || !ticket) return;
     setError(null);
     setSending(true);
-    const { error: insertError } = await createClient()
-      .from("ticket_messages")
-      .insert({
-        ticket_id: ticket.id,
-        author_id: user.id,
-        body: reply.trim(),
-      });
+    const response = await fetch("/api/support/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ticketId: ticket.id, body: reply.trim() }),
+    });
+    const payload = (await response.json()) as { error?: string };
     setSending(false);
-    if (insertError) {
-      setError(insertError.message);
+    if (!response.ok) {
+      setError(payload.error ?? "We couldn't send that.");
       return;
     }
     setReply("");
@@ -116,27 +115,39 @@ export default function TicketThreadPage() {
     <div className="py-16 sm:py-20">
       <Container size="narrow">
         <Link href={backHref} className="text-sm text-muted hover:text-foreground">
-          {isAdmin ? "Admin" : "Support"}
+          {isStaff ? "Inbox" : "Support"}
         </Link>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">
-          {ticket.subject}
+          {ticket.visitor_name || ticket.subject}
         </h1>
         <p className="mt-2 text-sm text-muted">
-          {ticket.contact_email} · {ticket.status === "open" ? "Open" : "Closed"}
+          {ticket.contact_email}
+          {isStaff && ticket.last_ip ? ` · ${ticket.last_ip}` : ""} ·{" "}
+          {ticket.status === "open" ? "Open" : "Closed"}
         </p>
+        {isStaff && (
+          <p className="mt-2 text-sm text-muted">
+            Commands: /ban, /unban, /close, /note, /help — they are not shown
+            as your message.
+          </p>
+        )}
 
         <ol className="mt-10 space-y-6">
           {messages.map((message) => (
             <li key={message.id} className="border-t border-black/10 pt-6">
               <p className="text-sm text-muted">
-                {message.author_id === user.id
-                  ? "You"
-                  : message.author_id === ticket.owner_id
-                    ? ticket.contact_email
-                    : "BoardView"}{" "}
+                {messageAuthorLabel(
+                  message,
+                  user.id,
+                  ticket.visitor_name || ticket.contact_email
+                )}{" "}
                 · {formatDateTime(message.created_at)}
               </p>
-              <p className="mt-2 whitespace-pre-wrap leading-relaxed">
+              <p
+                className={`mt-2 whitespace-pre-wrap leading-relaxed ${
+                  message.kind === "note" ? "text-muted italic" : ""
+                }`}
+              >
                 {message.body}
               </p>
             </li>
@@ -162,7 +173,7 @@ export default function TicketThreadPage() {
               <Button type="submit" disabled={sending}>
                 {sending ? "Sending…" : "Reply"}
               </Button>
-              {isAdmin && (
+              {isStaff && (
                 <Button
                   type="button"
                   variant="secondary"
@@ -174,7 +185,7 @@ export default function TicketThreadPage() {
             </div>
           </form>
         ) : (
-          isAdmin && (
+          isStaff && (
             <Button
               className="mt-10"
               variant="secondary"

@@ -107,7 +107,7 @@ export function Card({
   solid?: boolean;
 }) {
   return (
-    <div className={`rounded-xl border border-black/10 bg-white p-6 ${className}`}>
+    <div className={`rounded-xl border border-black/8 bg-white p-6 ${className}`}>
       {children}
     </div>
   );
