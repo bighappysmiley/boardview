@@ -224,15 +224,30 @@ export default function ClassroomPage() {
 
   async function updateDesk(id: string, patch: Partial<Desk>) {
     setError(null);
-    const { error: updateError } = await createClient()
+    setDesks((current) =>
+      current.map((d) => {
+        if (d.id !== id) return d;
+        const next = { ...d, ...patch };
+        if (patch.kind === "empty") next.screen_token = null;
+        return next;
+      })
+    );
+    const { data, error: updateError } = await createClient()
       .from("desks")
       .update(patch)
-      .eq("id", id);
+      .eq("id", id)
+      .select("*")
+      .single();
     if (updateError) {
       setError(updateError.message);
+      await loadDesks();
       return;
     }
-    await loadDesks();
+    if (data) {
+      setDesks((current) =>
+        current.map((d) => (d.id === id ? (data as Desk) : d))
+      );
+    }
   }
 
   async function removeDesk(id: string) {

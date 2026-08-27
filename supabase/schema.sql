@@ -1088,6 +1088,7 @@ create trigger desks_ensure_token
 create or replace function public.clear_desk_sessions_on_change()
 returns trigger
 language plpgsql
+security definer
 set search_path = public
 as $$
 begin
