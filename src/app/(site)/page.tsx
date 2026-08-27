@@ -63,9 +63,9 @@ export default function Home() {
           the room — BoardView puts it on a small screen on their desk.
         </p>
         <div className="mt-10 flex flex-wrap gap-3">
-          <ButtonLink href="/signup">Get started</ButtonLink>
-          <ButtonLink href="/shop" variant="secondary">
-            Shop
+          <ButtonLink href="/signup">Create an account</ButtonLink>
+          <ButtonLink href="/request" variant="secondary">
+            Request BoardView
           </ButtonLink>
         </div>
       </Section>
@@ -114,16 +114,17 @@ export default function Home() {
       <Section>
         <div className="max-w-xl border-t border-black/10 pt-16">
           <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            Free for every classroom
+            Start with an account
           </h2>
           <p className="mt-3 text-lg leading-relaxed text-muted">
-            You don&apos;t pay to use BoardView. You buy the camera and screen
-            once, for each room.
+            Create an account, then submit a request for a classroom trial or
+            for hardware. We review each request before anything is sent or
+            billed.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/signup">Get started</ButtonLink>
-            <ButtonLink href="/shop" variant="secondary">
-              Shop
+            <ButtonLink href="/signup">Create an account</ButtonLink>
+            <ButtonLink href="/request" variant="secondary">
+              Request BoardView
             </ButtonLink>
           </div>
         </div>

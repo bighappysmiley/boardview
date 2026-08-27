@@ -1,37 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Logo } from "./Logo";
 import { ButtonLink } from "./Button";
 import { Container } from "./layout";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { useSession } from "@/lib/useSession";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
 
 const links = [
   { href: "/#how-it-works", label: "How it works" },
-  { href: "/shop", label: "Shop" },
+  { href: "/request", label: "Request" },
 ];
 
 export function Navbar() {
-  const [signedIn, setSignedIn] = useState(false);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    const supabase = createClient();
-    let active = true;
-
-    supabase.auth.getUser().then(({ data }) => {
-      if (active) setSignedIn(Boolean(data.user));
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => setSignedIn(Boolean(session))
-    );
-    return () => {
-      active = false;
-      listener.subscription.unsubscribe();
-    };
-  }, []);
+  const { user, isAdmin } = useSession();
+  const signedIn = Boolean(user);
 
   return (
     <header className="sticky top-0 z-50 border-b border-black/10 bg-background">
@@ -54,10 +37,20 @@ export function Navbar() {
           </div>
 
           <div className="flex shrink-0 items-center gap-3">
-            {signedIn ? (
-              <ButtonLink href="/account" variant="secondary">
-                Classrooms
-              </ButtonLink>
+            {isSupabaseConfigured && signedIn ? (
+              <>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="hidden text-[0.95rem] text-muted hover:text-foreground sm:block"
+                  >
+                    Admin
+                  </Link>
+                )}
+                <ButtonLink href="/account" variant="secondary">
+                  Classrooms
+                </ButtonLink>
+              </>
             ) : (
               <>
                 <Link
@@ -66,7 +59,7 @@ export function Navbar() {
                 >
                   Log in
                 </Link>
-                <ButtonLink href="/signup">Get started</ButtonLink>
+                <ButtonLink href="/signup">Sign up</ButtonLink>
               </>
             )}
           </div>

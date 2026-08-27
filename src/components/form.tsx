@@ -45,3 +45,24 @@ export function FormNotice({ message }: { message: string }) {
     </p>
   );
 }
+
+export function TextArea({
+  label,
+  hint,
+  className = "",
+  ...props
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  label: string;
+  hint?: string;
+}) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="mb-1.5 block text-sm font-medium">{label}</span>
+      <textarea
+        className={`${inputClasses} min-h-28 resize-y`}
+        {...props}
+      />
+      {hint && <span className="mt-1.5 block text-sm text-muted">{hint}</span>}
+    </label>
+  );
+}

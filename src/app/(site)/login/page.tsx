@@ -37,7 +37,12 @@ export default function LoginPage() {
       setError(signInError.message);
       return;
     }
-    router.push("/account");
+      const next = new URLSearchParams(window.location.search).get("next");
+      const path =
+        next && next.startsWith("/") && !next.startsWith("//")
+          ? next
+          : "/account";
+      router.push(path);
   }
 
   return (
@@ -72,7 +77,7 @@ export default function LoginPage() {
       <p className="mt-6 text-center text-sm text-muted">
         Need an account?{" "}
         <Link href="/signup" className="font-medium text-accent">
-          Get started
+          Create one
         </Link>
       </p>
     </AuthCard>
