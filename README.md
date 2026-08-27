@@ -31,12 +31,12 @@ a Next.js app meant to be hosted free on Netlify.
 - **Admin / Inbox** (`/admin`) — **Admin** can do everything (requests, team
   roles, bans). **Staff** can handle support. Set the name visitors see under
   Your name. Add people by email before they have an account.
-- **Teacher controls** (`/account`, `/account/classrooms/[id]`) — create a
-  classroom, add cameras, rename and reorder them, and hide the board. A live
-  preview shows exactly what the student is seeing.
-- **Student screen** (`/screen/[classroomId]`) — the dedicated view for the
-  desk device. Shows the BoardView logo when idle, the framed camera view
-  when live, and only the time plus the BoardView name when blacked out.
+- **Teacher controls** (`/account`, `/account/classrooms/[id]`) — seating
+  chart, students and PINs, cameras, and class or per-student blackout. Each
+  screen desk has its own link to open on the device.
+- **Desk screen** (`/screen/s/[token]`) — the student device. A PIN unlocks
+  the board. No teacher login on the desk. `/screen/[classroomId]` is a
+  signed-in teacher preview.
 
 ## Multiple cameras per classroom
 
@@ -46,8 +46,8 @@ button on the screen cycles to the next one in the order the teacher set.
 The <kbd>→</kbd> / <kbd>←</kbd> keys do the same, so a physical button wired
 to the camera box can send a key press instead of needing a touchscreen.
 
-Blackout and camera edits reach the screen over Supabase Realtime, so the
-device updates without anyone touching it.
+Blackout and camera edits reach a paired desk over a short session poll, so
+the device updates without anyone touching it.
 
 ## Local setup
 
@@ -111,8 +111,6 @@ while requests are handled by hand.
 - **Drag-to-frame.** Framing is currently "point the camera and set its
   stream URL"; cropping a region from the browser comes once there's a real
   feed to crop.
-- **Pairing a screen without a teacher login.** The screen device currently
-  signs in as the teacher once. A per-classroom screen token would be nicer.
 - **Fulfillment after an approved request** (shipping details, inventory).
 
 ## Tech stack

@@ -9,12 +9,13 @@ const system = [
   },
   {
     term: "Desk screen",
-    detail: "A small screen on the student's desk. It only shows the board.",
+    detail:
+      "A small screen on the student's desk. They enter a PIN, then it only shows the board.",
   },
   {
     term: "Your computer",
     detail:
-      "Name each view, change the order, and hide the board when it isn't part of the lesson.",
+      "Map the room, seat students, name each view, and hide the board when it isn't part of the lesson.",
   },
 ];
 
@@ -32,9 +33,9 @@ const steps = [
     term: "2",
     detail: (
       <>
-        <span className="font-medium text-foreground">Give them names.</span>{" "}
-        Front board, side board, the poster — whatever the student will
-        recognise.
+        <span className="font-medium text-foreground">Map the room.</span>{" "}
+        Place seats, screens, and the teacher&apos;s desk. Give each student a
+        PIN.
       </>
     ),
   },
@@ -42,8 +43,9 @@ const steps = [
     term: "3",
     detail: (
       <>
-        <span className="font-medium text-foreground">They switch views.</span>{" "}
-        The desk screen shows one at a time. Next view goes to the next camera.
+        <span className="font-medium text-foreground">They see the board.</span>{" "}
+        The desk screen unlocks with their PIN. Next view goes to the next
+        camera.
       </>
     ),
   },
@@ -81,7 +83,7 @@ export default function Home() {
       <Section id="how-it-works">
         <SectionHeader
           title="How it works"
-          lead="A few minutes to set up. After that, the student presses one button."
+          lead="A few minutes to set up. After that, the student enters a PIN and presses one button."
         />
         <SpecRows items={steps} />
       </Section>
@@ -107,7 +109,7 @@ export default function Home() {
       <Section>
         <SectionHeader
           title="Hide the board when it isn't needed"
-          lead="From your computer you can hide it at once. The screen keeps the time and the BoardView name — nothing else."
+          lead="From your computer you can hide it for the whole class, or for one student. The screen keeps the time and the BoardView name — nothing else."
         />
       </Section>
 

@@ -949,18 +949,43 @@ $$;
 create table if not exists public.desks (
   id uuid primary key default gen_random_uuid(),
   classroom_id uuid not null references public.classrooms (id) on delete cascade,
-  row integer not null check (row between 0 and 7),
-  col integer not null check (col between 0 and 7),
-  kind text not null check (kind in ('screen', 'empty')),
+  row integer not null check (row between 0 and 11),
+  col integer not null check (col between 0 and 11),
+  kind text not null check (kind in ('screen', 'empty', 'fixture')),
   label text check (
     label is null or char_length(trim(label)) between 1 and 40
   ),
+  col_span integer not null default 1 check (col_span between 1 and 12),
+  row_span integer not null default 1 check (row_span between 1 and 12),
   screen_token uuid unique,
   created_at timestamptz not null default now(),
   unique (classroom_id, row, col)
 );
 
 create index if not exists desks_classroom_id_idx on public.desks (classroom_id);
+
+alter table public.desks drop constraint if exists desks_kind_check;
+alter table public.desks add constraint desks_kind_check
+  check (kind in ('screen', 'empty', 'fixture'));
+
+alter table public.desks drop constraint if exists desks_row_check;
+alter table public.desks add constraint desks_row_check
+  check (row between 0 and 11);
+
+alter table public.desks drop constraint if exists desks_col_check;
+alter table public.desks add constraint desks_col_check
+  check (col between 0 and 11);
+
+alter table public.desks add column if not exists col_span integer not null default 1;
+alter table public.desks add column if not exists row_span integer not null default 1;
+
+alter table public.desks drop constraint if exists desks_col_span_check;
+alter table public.desks add constraint desks_col_span_check
+  check (col_span between 1 and 12);
+
+alter table public.desks drop constraint if exists desks_row_span_check;
+alter table public.desks add constraint desks_row_span_check
+  check (row_span between 1 and 12);
 
 create table if not exists public.students (
   id uuid primary key default gen_random_uuid(),
@@ -1073,8 +1098,17 @@ as $$
 begin
   if new.kind = 'screen' then
     new.screen_token := coalesce(new.screen_token, gen_random_uuid());
+    new.col_span := 1;
+    new.row_span := 1;
   else
     new.screen_token := null;
+    if new.kind = 'empty' then
+      new.col_span := 1;
+      new.row_span := 1;
+    else
+      new.col_span := least(greatest(coalesce(new.col_span, 1), 1), 12 - new.col);
+      new.row_span := least(greatest(coalesce(new.row_span, 1), 1), 12 - new.row);
+    end if;
   end if;
   return new;
 end;
@@ -1082,7 +1116,7 @@ $$;
 
 drop trigger if exists desks_ensure_token on public.desks;
 create trigger desks_ensure_token
-  before insert or update of kind, screen_token on public.desks
+  before insert or update of kind, screen_token, col_span, row_span, row, col on public.desks
   for each row execute function public.ensure_desk_token();
 
 create or replace function public.clear_desk_sessions_on_change()
@@ -1092,7 +1126,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if new.kind = 'empty' or new.screen_token is distinct from old.screen_token then
+  if new.kind <> 'screen' or new.screen_token is distinct from old.screen_token then
     delete from public.desk_sessions where desk_id = new.id;
     delete from public.desk_unlock_attempts where desk_id = new.id;
   end if;

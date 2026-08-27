@@ -1,6 +1,6 @@
 import { BareInput } from "@/components/form";
 import { Button } from "@/components/Button";
-import { deskLabel, type Desk, type Student } from "@/lib/types";
+import { deskLabel, isStudentDesk, type Desk, type Student } from "@/lib/types";
 
 export function StudentRoster({
   students,
@@ -10,6 +10,7 @@ export function StudentRoster({
   adding,
   onAdd,
   onAssign,
+  onRename,
   onRandomPin,
   onCustomPin,
   onBlackout,
@@ -22,11 +23,13 @@ export function StudentRoster({
   adding: boolean;
   onAdd: (event: React.FormEvent) => void;
   onAssign: (studentId: string, deskId: string | null) => void;
+  onRename: (student: Student, name: string) => void;
   onRandomPin: (student: Student) => void;
   onCustomPin: (student: Student, pin: string) => void;
   onBlackout: (student: Student) => void;
   onRemove: (student: Student) => void;
 }) {
+  const seats = desks.filter(isStudentDesk);
   return (
     <div>
       <ul className="divide-y divide-black/10 border-y border-black/10">
@@ -38,8 +41,16 @@ export function StudentRoster({
         {students.map((student) => (
           <li key={student.id} className="py-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-medium">{student.display_name}</p>
+              <div className="min-w-0 flex-1">
+                <label className="sr-only" htmlFor={`name-${student.id}`}>
+                  Student name
+                </label>
+                <BareInput
+                  id={`name-${student.id}`}
+                  defaultValue={student.display_name}
+                  maxLength={80}
+                  onBlur={(e) => onRename(student, e.target.value)}
+                />
                 <p className="mt-1 font-mono text-sm tabular-nums tracking-widest">
                   PIN {student.pin}
                 </p>
@@ -92,7 +103,7 @@ export function StudentRoster({
                 }
               >
                 <option value="">No desk</option>
-                {desks.map((desk) => (
+                {seats.map((desk) => (
                   <option key={desk.id} value={desk.id}>
                     {deskLabel(desk)}
                     {desk.kind === "screen" ? " · screen" : ""}

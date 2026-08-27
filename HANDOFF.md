@@ -44,8 +44,9 @@ the physical hardware is paid for.**
 |---|---|---|
 | Marketing site | `/`, `/pricing` | Done |
 | Auth | `/signup`, `/login`, `/forgot-password`, `/reset-password`, `/auth/callback` | Done (Supabase, email verification) |
-| Teacher controls | `/account`, `/account/classrooms/[id]` | Done |
-| Student screen | `/screen/[classroomId]`, `/screen/demo` | Done |
+| Teacher controls | `/account`, `/account/classrooms/[id]` | Done (seating, students, PINs, cameras) |
+| Desk screen | `/screen/s/[token]` | Done (PIN pad, no teacher login) |
+| Teacher preview | `/screen/[classroomId]` | Done (signed-in only) |
 | Hardware checkout | `/api/checkout` | Done (needs Stripe keys to go live) |
 
 ### Not built yet — these are the next real milestones
@@ -59,16 +60,10 @@ the physical hardware is paid for.**
 2. **Drag-to-frame.** Right now "framing" means physically aiming the camera
    and pasting its stream URL. Cropping a region in the browser needs a real
    feed to crop first.
-3. **Screen pairing without a teacher login.** Currently the screen device
-   signs into the teacher's account once. That works but means a student's
-   desk device is logged into a teacher account. **Recommended fix:** add a
-   short-lived per-classroom `screen_token`, and a Postgres security-definer
-   function that lets an anonymous screen read just that classroom and its
-   cameras. This is the highest-value security improvement.
-4. **Order fulfillment** after a Stripe purchase — shipping address capture,
+3. **Order fulfillment** after a Stripe purchase — shipping address capture,
    inventory, order records. Currently checkout succeeds and nothing records
    the order.
-5. **Device software** for the camera side and the screen side.
+4. **Device software** for the camera side and the screen side.
 
 ---
 
@@ -104,17 +99,22 @@ src/
       login|signup|forgot-password|reset-password/page.tsx
       pricing/page.tsx
       account/page.tsx                     Classroom list + create
-      account/classrooms/[id]/page.tsx     Cameras, blackout, live preview
-    screen/[classroomId]/page.tsx  Student screen — NO nav/footer, fullscreen
+      account/classrooms/[id]/page.tsx     Seating, students, PINs, cameras
+    screen/s/[token]/page.tsx      Paired desk — PIN then board, no teacher login
+    screen/[classroomId]/page.tsx  Signed-in teacher preview
     auth/callback/route.ts        Email-verification code exchange
     api/checkout/route.ts         Stripe Checkout session
   components/
     layout.tsx        Container / Section / SectionHeader / Card  ← spacing system
+    SeatingChart.tsx  Room grid (seats, screens, teacher's desk)
+    StudentRoster.tsx Students, PINs, rename
+    PinPad.tsx        Desk unlock
     ScreenCanvas.tsx  What the screen displays + DeviceFrame bezel
-    ScreenDemo.tsx    Interactive mock used on the landing page
     Navbar.tsx Footer.tsx Logo.tsx Button.tsx form.tsx AuthCard.tsx SetupNotice.tsx
   lib/
-    types.ts          Classroom, Camera
+    types.ts          Classroom, Desk, Student, Camera
+    seating.ts        Grid occupancy and placement
+    pins.ts           Four-digit PIN helpers
     supabase/client.ts  Browser client + isSupabaseConfigured
     supabase/server.ts  Route-handler client (cookie read/write)
     demo.ts           Sample data for /screen/demo and landing mocks
@@ -136,26 +136,41 @@ classrooms
   id           uuid pk
   owner_id     uuid -> auth.users(id) cascade
   name         text (1..80 chars)
-  blacked_out  boolean default false
+  blacked_out  boolean default false   -- all screens
+  pin_mode     assigned_desk | pin_as_id
   created_at   timestamptz
 
 cameras
   id            uuid pk
   classroom_id  uuid -> classrooms(id) cascade
   label         text (1..80 chars)
-  stream_url    text nullable      -- null until hardware is paired
-  position      integer            -- order the "Next view" button cycles
+  stream_url    text nullable
+  position      integer
   created_at    timestamptz
+
+desks
+  id            uuid pk
+  classroom_id  uuid -> classrooms(id) cascade
+  row, col      0..11
+  kind          screen | empty | fixture
+  col_span, row_span   fixture size (seats/screens are 1×1)
+  label         optional
+  screen_token  uuid unique, only for kind=screen
+  created_at    timestamptz
+
+students
+  id            uuid pk
+  classroom_id  uuid -> classrooms(id) cascade
+  display_name  text
+  pin           4 digits, teacher-visible
+  pin_hash      bcrypt, used by unlock RPC
+  desk_id       nullable -> desks
+  blacked_out   boolean
 ```
 
-Both tables have **row-level security**: a teacher can only read/write rows
-they own. Cameras are checked through their classroom's `owner_id`.
-
-**Verified**, by running `schema.sql` against a real PostgreSQL 16 with an
-`auth.users` / `auth.uid()` shim: a second teacher sees none of the first's
-rows, their `UPDATE` affects zero rows, and inserting a camera into another
-teacher's classroom is rejected by the policy. The file is also safe to run
-more than once.
+Teacher tables have **row-level security**: a teacher can only read/write rows
+they own. Anonymous desk devices never SELECT these tables; they call
+`open_desk`, `unlock_screen`, and `desk_session`.
 
 `position` is kept dense (0,1,2,…). Adding appends at `cameras.length`;
 reordering and deleting rewrite every row's position. See `moveCamera` and
@@ -269,15 +284,11 @@ bypasses RLS and `NEXT_PUBLIC_*` values are shipped to the browser.
 
 ## 9. Suggested next steps, in order
 
-1. **Merge/verify branches.** Work happened on
-   `claude/boardview-accessibility-4xf614`; `main` may be a commit behind.
-   Check before starting.
-2. **Screen pairing tokens** (item 3 in §2) — best security-per-effort win.
-3. **Pick the camera hardware**, then implement the feed. Start with MJPEG so
+1. **Pick the camera hardware**, then implement the feed. Start with MJPEG so
    the existing `<img>` rendering works unchanged.
-4. **Record Stripe orders** — a `orders` table + a Stripe webhook route, so a
+2. **Record Stripe orders** — a `orders` table + a Stripe webhook route, so a
    purchase produces a shipping record.
-5. **Test on the real screen device** at its actual physical size; the layout
+3. **Test on the real screen device** at its actual physical size; the layout
    is responsive but has only been checked at 360–1440px in a desktop browser.
 
 ---

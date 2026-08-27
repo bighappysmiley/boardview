@@ -9,9 +9,13 @@ import { Container } from "@/components/layout";
 import { BareInput, FormError } from "@/components/form";
 import { SetupNotice } from "@/components/SetupNotice";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
-import type { Classroom } from "@/lib/types";
+import type { Classroom, DeskKind } from "@/lib/types";
 
-type Row = Classroom & { cameras: { count: number }[] };
+type Row = Classroom & {
+  cameras: { count: number }[];
+  students: { count: number }[];
+  desks: { kind: DeskKind }[];
+};
 
 export default function AccountPage() {
   const router = useRouter();
@@ -26,7 +30,7 @@ export default function AccountPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from("classrooms")
-      .select("*, cameras(count)")
+      .select("*, cameras(count), students(count), desks(kind)")
       .order("created_at");
     setClassrooms((data ?? []) as Row[]);
   }, []);
@@ -158,6 +162,10 @@ export default function AccountPage() {
             <ul>
               {classrooms.map((classroom) => {
                 const cameraCount = classroom.cameras?.[0]?.count ?? 0;
+                const studentCount = classroom.students?.[0]?.count ?? 0;
+                const screenCount = (classroom.desks ?? []).filter(
+                  (d) => d.kind === "screen"
+                ).length;
                 return (
                   <li
                     key={classroom.id}
@@ -171,7 +179,14 @@ export default function AccountPage() {
                         {classroom.name}
                       </Link>
                       <p className="mt-0.5 text-sm text-muted">
-                        {cameraCount} {cameraCount === 1 ? "camera" : "cameras"}
+                        {studentCount}{" "}
+                        {studentCount === 1 ? "student" : "students"}
+                        {" · "}
+                        {screenCount}{" "}
+                        {screenCount === 1 ? "screen" : "screens"}
+                        {" · "}
+                        {cameraCount}{" "}
+                        {cameraCount === 1 ? "camera" : "cameras"}
                         {classroom.blacked_out ? " · blacked out" : ""}
                       </p>
                     </div>

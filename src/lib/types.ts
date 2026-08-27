@@ -1,5 +1,5 @@
 export type PinMode = "assigned_desk" | "pin_as_id";
-export type DeskKind = "screen" | "empty";
+export type DeskKind = "screen" | "empty" | "fixture";
 
 export type Classroom = {
   id: string;
@@ -17,6 +17,8 @@ export type Desk = {
   col: number;
   kind: DeskKind;
   label: string | null;
+  col_span: number;
+  row_span: number;
   screen_token: string | null;
   created_at: string;
 };
@@ -34,7 +36,12 @@ export type Student = {
 export function deskLabel(desk: Desk) {
   const custom = desk.label?.trim();
   if (custom) return custom;
+  if (desk.kind === "fixture") return "Teacher's desk";
   return `Row ${desk.row + 1}, seat ${desk.col + 1}`;
+}
+
+export function isStudentDesk(desk: Desk) {
+  return desk.kind === "screen" || desk.kind === "empty";
 }
 
 export type OpenDesk = {

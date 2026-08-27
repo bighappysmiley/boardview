@@ -8,11 +8,12 @@ import { Container } from "@/components/layout";
 import { BareInput, FormError } from "@/components/form";
 import { SetupNotice } from "@/components/SetupNotice";
 import { ScreenCanvas, DeviceFrame } from "@/components/ScreenCanvas";
-import { SeatingChart, nextEmptyCell } from "@/components/SeatingChart";
+import { SeatingChart } from "@/components/SeatingChart";
 import { StudentRoster } from "@/components/StudentRoster";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { useClock } from "@/lib/useClock";
 import { isPin, randomPin } from "@/lib/pins";
+import { canPlace, nextEmptyCell, spanCols, spanRows } from "@/lib/seating";
 import type {
   Camera,
   Classroom,
@@ -21,7 +22,7 @@ import type {
   PinMode,
   Student,
 } from "@/lib/types";
-import { deskLabel } from "@/lib/types";
+import { deskLabel, isStudentDesk } from "@/lib/types";
 
 const STUDENT_COLS =
   "id, classroom_id, display_name, pin, desk_id, blacked_out, created_at";
@@ -198,11 +199,30 @@ export default function ClassroomPage() {
     if (updateError) setError(updateError.message);
   }
 
-  async function placeDesk(row: number, col: number, kind: DeskKind = "empty") {
+  async function placeDesk(
+    row: number,
+    col: number,
+    kind: DeskKind = "empty",
+    extra: Partial<Desk> = {}
+  ) {
+    const colSpan = extra.col_span ?? 1;
+    const rowSpan = extra.row_span ?? 1;
+    if (!canPlace(desks, row, col, colSpan, rowSpan)) {
+      setError("That doesn't fit. Move something first.");
+      return;
+    }
     setError(null);
     const { data, error: insertError } = await createClient()
       .from("desks")
-      .insert({ classroom_id: classroomId, row, col, kind })
+      .insert({
+        classroom_id: classroomId,
+        row,
+        col,
+        kind,
+        label: extra.label ?? null,
+        col_span: colSpan,
+        row_span: rowSpan,
+      })
       .select("*")
       .single();
     if (insertError) {
@@ -222,13 +242,65 @@ export default function ClassroomPage() {
     await placeDesk(cell.row, cell.col, "screen");
   }
 
+  async function addTeacherDesk() {
+    const width = 3;
+    const cell =
+      nextEmptyCell(desks, width, 1) ?? nextEmptyCell(desks, 1, 1);
+    if (!cell) {
+      setError("The chart is full. Remove a desk first.");
+      return;
+    }
+    const colSpan = canPlace(desks, cell.row, cell.col, width, 1) ? width : 1;
+    await placeDesk(cell.row, cell.col, "fixture", {
+      label: "Teacher's desk",
+      col_span: colSpan,
+      row_span: 1,
+    });
+  }
+
+  async function moveDesk(id: string, row: number, col: number) {
+    const desk = desks.find((d) => d.id === id);
+    if (!desk) return;
+    if (desk.row === row && desk.col === col) return;
+    if (!canPlace(desks, row, col, spanCols(desk), spanRows(desk), id)) {
+      setError("That doesn't fit. Move something first.");
+      return;
+    }
+    await updateDesk(id, { row, col });
+  }
+
   async function updateDesk(id: string, patch: Partial<Desk>) {
+    const desk = desks.find((d) => d.id === id);
+    if (!desk) return;
+    const nextCols = patch.col_span ?? spanCols(desk);
+    const nextRows = patch.row_span ?? spanRows(desk);
+    const nextRow = patch.row ?? desk.row;
+    const nextCol = patch.col ?? desk.col;
+    if (
+      !canPlace(desks, nextRow, nextCol, nextCols, nextRows, id)
+    ) {
+      setError("That doesn't fit. Move something first.");
+      return;
+    }
+
     setError(null);
+    if (patch.kind === "fixture") {
+      await createClient()
+        .from("students")
+        .update({ desk_id: null })
+        .eq("desk_id", id);
+    }
     setDesks((current) =>
       current.map((d) => {
         if (d.id !== id) return d;
         const next = { ...d, ...patch };
-        if (patch.kind === "empty") next.screen_token = null;
+        if (patch.kind === "empty" || patch.kind === "fixture") {
+          next.screen_token = null;
+        }
+        if (patch.kind === "empty" || patch.kind === "screen") {
+          next.col_span = 1;
+          next.row_span = 1;
+        }
         return next;
       })
     );
@@ -248,6 +320,7 @@ export default function ClassroomPage() {
         current.map((d) => (d.id === id ? (data as Desk) : d))
       );
     }
+    if (patch.kind === "fixture") await loadStudents();
   }
 
   async function removeDesk(id: string) {
@@ -268,6 +341,11 @@ export default function ClassroomPage() {
     setError(null);
     const supabase = createClient();
     if (deskId) {
+      const desk = desks.find((d) => d.id === deskId);
+      if (desk && !isStudentDesk(desk)) {
+        setError("That isn't a student seat.");
+        return;
+      }
       const { error: clearError } = await supabase
         .from("students")
         .update({ desk_id: null })
@@ -322,6 +400,21 @@ export default function ClassroomPage() {
       return;
     }
     setNewStudent("");
+    await loadStudents();
+  }
+
+  async function renameStudent(student: Student, display_name: string) {
+    const name = display_name.trim();
+    if (!name || name === student.display_name) return;
+    setError(null);
+    const { error: updateError } = await createClient()
+      .from("students")
+      .update({ display_name: name })
+      .eq("id", student.id);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
     await loadStudents();
   }
 
@@ -482,13 +575,19 @@ export default function ClassroomPage() {
                 <div>
                   <h2 className="text-lg font-semibold">Seating</h2>
                   <p className="mt-1 max-w-md text-sm text-muted">
-                    Tap a square to add a seat. Mark the ones that have a
-                    screen, then seat students.
+                    Tap a square to add a seat. Drag to move. Add a
+                    teacher&apos;s desk if the front of the room isn&apos;t a
+                    row of seats.
                   </p>
                 </div>
-                <Button variant="secondary" onClick={addScreenDesk}>
-                  Add a screen
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={addTeacherDesk}>
+                    Add teacher&apos;s desk
+                  </Button>
+                  <Button variant="secondary" onClick={addScreenDesk}>
+                    Add a screen
+                  </Button>
+                </div>
               </div>
 
               <div className="mt-6">
@@ -498,6 +597,7 @@ export default function ClassroomPage() {
                   selectedId={selectedId}
                   onSelect={setSelectedId}
                   onPlace={(row, col) => placeDesk(row, col, "empty")}
+                  onMove={moveDesk}
                 />
               </div>
 
@@ -513,6 +613,9 @@ export default function ClassroomPage() {
                     updateDesk(selected.id, {
                       label: label.trim() || null,
                     })
+                  }
+                  onSpan={(col_span, row_span) =>
+                    updateDesk(selected.id, { col_span, row_span })
                   }
                   onAssign={(studentId) =>
                     studentId
@@ -576,6 +679,7 @@ export default function ClassroomPage() {
                   onCustomPin={setStudentPin}
                   onBlackout={toggleStudentBlackout}
                   onRemove={removeStudent}
+                  onRename={renameStudent}
                 />
               </div>
             </div>
@@ -740,6 +844,7 @@ function DeskPanel({
   pairPath,
   onKind,
   onLabel,
+  onSpan,
   onAssign,
   onCopy,
   onRotate,
@@ -753,12 +858,14 @@ function DeskPanel({
   pairPath: string | null;
   onKind: (kind: DeskKind) => void;
   onLabel: (label: string) => void;
+  onSpan: (colSpan: number, rowSpan: number) => void;
   onAssign: (studentId: string) => void;
   onCopy: () => void;
   onRotate: () => void;
   onRemove: () => void;
   onBlackout?: () => void;
 }) {
+  const studentDesk = isStudentDesk(desk);
   return (
     <div className="mt-6 rounded-xl border border-black/8 bg-white p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -768,11 +875,11 @@ function DeskPanel({
           onClick={onRemove}
           className="text-sm text-muted hover:text-foreground"
         >
-          Remove desk
+          Remove
         </button>
       </div>
 
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         <KindToggle
           active={desk.kind === "empty"}
           onClick={() => onKind("empty")}
@@ -785,36 +892,79 @@ function DeskPanel({
         >
           Screen
         </KindToggle>
+        <KindToggle
+          active={desk.kind === "fixture"}
+          onClick={() => onKind("fixture")}
+        >
+          Other
+        </KindToggle>
       </div>
 
       <label className="mt-4 block text-sm">
-        <span className="mb-1.5 block font-medium">Name this desk</span>
+        <span className="mb-1.5 block font-medium">
+          {desk.kind === "fixture" ? "What is this" : "Name this desk"}
+        </span>
         <BareInput
           defaultValue={desk.label ?? ""}
           key={`${desk.id}-label`}
           maxLength={40}
-          placeholder="Window"
+          placeholder={
+            desk.kind === "fixture" ? "Teacher's desk" : "Window"
+          }
           onBlur={(e) => onLabel(e.target.value)}
         />
       </label>
 
-      <label className="mt-4 block text-sm">
-        <span className="mb-1.5 block font-medium">Student</span>
-        <select
-          className="w-full rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-base"
-          value={student?.id ?? ""}
-          onChange={(e) => onAssign(e.target.value)}
-        >
-          <option value="">Nobody here</option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.display_name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {desk.kind === "fixture" && (
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <label className="block text-sm">
+            <span className="mb-1.5 block font-medium">How wide</span>
+            <BareInput
+              type="number"
+              min={1}
+              max={12 - desk.col}
+              key={`${desk.id}-wide-${desk.col_span}`}
+              defaultValue={desk.col_span}
+              onBlur={(e) =>
+                onSpan(Number(e.target.value) || 1, desk.row_span)
+              }
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1.5 block font-medium">How deep</span>
+            <BareInput
+              type="number"
+              min={1}
+              max={12 - desk.row}
+              key={`${desk.id}-deep-${desk.row_span}`}
+              defaultValue={desk.row_span}
+              onBlur={(e) =>
+                onSpan(desk.col_span, Number(e.target.value) || 1)
+              }
+            />
+          </label>
+        </div>
+      )}
 
-      {student && onBlackout && (
+      {studentDesk && (
+        <label className="mt-4 block text-sm">
+          <span className="mb-1.5 block font-medium">Student</span>
+          <select
+            className="w-full rounded-lg border border-black/10 bg-white px-3.5 py-2.5 text-base"
+            value={student?.id ?? ""}
+            onChange={(e) => onAssign(e.target.value)}
+          >
+            <option value="">Nobody here</option>
+            {students.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.display_name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {studentDesk && student && onBlackout && (
         <Button
           variant="secondary"
           className="mt-4"
