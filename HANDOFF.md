@@ -17,9 +17,9 @@ It has three parts:
    at something the student needs to see: the front whiteboard, a second
    board, a poster. Each runs off a rechargeable battery pack, optionally
    housed in a 3D-printed enclosure. Recharged between subjects.
-2. **Screen** — a small screen (roughly iPad-mini sized, deliberately *not*
-   tablet-like) sitting on the student's desk. It does exactly one job: show
-   the board. It runs no other apps.
+2. **Screen** — a small screen on the student's desk, about **5 inches**
+   (payment-terminal size, not a tablet). It does exactly one job: show the
+   board. It runs no other apps.
 3. **This web app** — the marketing site, teacher accounts, and the controls
    the teacher uses to manage the room.
 
@@ -286,19 +286,19 @@ bypasses RLS and `NEXT_PUBLIC_*` values are shipped to the browser.
 
 ## 9. Suggested next steps, in order
 
-1. **Build the first physical kit** (thin, ~7", not a tablet). Camera feed
-   software comes after these parts are on a desk.
-   - Desk: [Waveshare 7inch HDMI LCD (H)](https://www.waveshare.com/7inch-hdmi-lcd-h.htm)
-     **without** the bulky case (~7 mm panel) + Raspberry Pi 4 (2 GB) on the
-     back, Chromium kiosk to `/screen/s/{token}`.
+1. **Build the first physical kit** (about 5", payment-terminal size, not a
+   tablet). Camera feed software comes after these parts are on a desk.
+   - Desk: [Waveshare 5inch HDMI LCD (H)](https://www.waveshare.com/5inch-hdmi-lcd-h.htm)
+     **without** a bulky case (panel about 121×89 mm) + Raspberry Pi 4 (2 GB)
+     on the back, Chromium kiosk to `/screen/s/{token}`.
    - Camera: Raspberry Pi Zero 2 W + Camera Module 3 Wide + a slim USB-C
      power bank. Local MJPEG HTTP, pasted into the classroom camera link.
      No cloud cameras (Ring / Blink / Wyze / Nixplay).
 2. **Record Stripe orders** — a `orders` table + a Stripe webhook route, so a
    purchase produces a shipping record.
-3. **Test on that 7" panel** at real size; layout has only been checked at
-   360–1440px in a desktop browser. School units can later be a 7" Android
-   kiosk / photo-frame board with the same look, no Pi on the back.
+3. **Test on that 5" panel** at real size; layout has only been checked at
+   360–1440px in a desktop browser. School units can later be the same 5"
+   look as a single thin kiosk / POS board, no Pi on the back.
 
 ---
 
