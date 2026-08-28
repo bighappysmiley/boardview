@@ -154,6 +154,17 @@ export default function PairedDeskPage() {
     applyView(data as DeskSessionView);
   }
 
+  async function lock() {
+    const current = sessionRef.current;
+    if (current) {
+      await createClient().rpc("lock_screen", {
+        p_token: token,
+        p_session: current,
+      });
+    }
+    clearSession();
+  }
+
   const nextCamera = useCallback(() => {
     setIndex((current) => current + 1);
   }, []);
@@ -224,12 +235,26 @@ export default function PairedDeskPage() {
         </div>
       )}
 
-      <Link
-        href="/account"
-        className="absolute bottom-3 left-3 rounded-md px-3 py-1.5 text-xs text-white/25 transition-colors hover:bg-white/10 hover:text-white/80 focus-visible:bg-white/10 focus-visible:text-white"
-      >
-        Teacher controls
-      </Link>
+      {view && (
+        <button
+          type="button"
+          onClick={lock}
+          className={`absolute right-3 rounded-md px-3 py-1.5 text-xs text-white/25 transition-colors hover:bg-white/10 hover:text-white/80 focus-visible:bg-white/10 focus-visible:text-white ${
+            mode === "live" ? "bottom-16" : "bottom-3"
+          }`}
+        >
+          Lock
+        </button>
+      )}
+
+      {!view && (
+        <Link
+          href="/account"
+          className="absolute bottom-3 left-3 rounded-md px-3 py-1.5 text-xs text-white/25 transition-colors hover:bg-white/10 hover:text-white/80 focus-visible:bg-white/10 focus-visible:text-white"
+        >
+          Set up
+        </Link>
+      )}
     </div>
   );
 }

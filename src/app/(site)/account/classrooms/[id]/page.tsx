@@ -44,7 +44,8 @@ export default function ClassroomPage() {
   const [adding, setAdding] = useState(false);
   const [addingStudent, setAddingStudent] = useState(false);
   const [preview, setPreview] = useState(0);
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [pinsCopied, setPinsCopied] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const loadCameras = useCallback(async () => {
@@ -113,6 +114,15 @@ export default function ClassroomPage() {
     };
   }, [classroomId, router, loadCameras, loadDesks, loadStudents]);
 
+  useEffect(() => {
+    if (!classroomId || loading) return;
+    const id = window.setInterval(() => {
+      loadDesks();
+      loadStudents();
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [classroomId, loading, loadDesks, loadStudents]);
+
   async function addCamera(event: React.FormEvent) {
     event.preventDefault();
     const label = newLabel.trim();
@@ -148,6 +158,8 @@ export default function ClassroomPage() {
   }
 
   async function removeCamera(id: string) {
+    const camera = cameras.find((c) => c.id === id);
+    if (!window.confirm(`Remove ${camera?.label ?? "this camera"}?`)) return;
     const remaining = cameras.filter((c) => c.id !== id);
     setCameras(remaining);
     const supabase = createClient();
@@ -187,6 +199,56 @@ export default function ClassroomPage() {
       .update({ blacked_out: next })
       .eq("id", classroom.id);
     if (updateError) setError(updateError.message);
+  }
+
+  async function renameClassroom(name: string) {
+    if (!classroom) return;
+    const next = name.trim();
+    if (!next || next === classroom.name) return;
+    setClassroom({ ...classroom, name: next });
+    const { error: updateError } = await createClient()
+      .from("classrooms")
+      .update({ name: next })
+      .eq("id", classroom.id);
+    if (updateError) {
+      setError(updateError.message);
+      setClassroom({ ...classroom, name: classroom.name });
+    }
+  }
+
+  async function deleteClassroom() {
+    if (!classroom) return;
+    if (
+      !window.confirm(
+        `Remove ${classroom.name} and everyone in it? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    const { error: deleteError } = await createClient()
+      .from("classrooms")
+      .delete()
+      .eq("id", classroom.id);
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
+    }
+    router.push("/account");
+  }
+
+  async function copyPins() {
+    if (students.length === 0) return;
+    const text = students
+      .map((s) => `${s.display_name}  ${s.pin}`)
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setPinsCopied(true);
+      window.setTimeout(() => setPinsCopied(false), 2000);
+    } catch {
+      setError("Couldn't copy the PINs.");
+    }
   }
 
   async function setPinMode(pin_mode: PinMode) {
@@ -324,6 +386,7 @@ export default function ClassroomPage() {
   }
 
   async function removeDesk(id: string) {
+    if (!window.confirm("Remove this from the chart?")) return;
     setError(null);
     const { error: deleteError } = await createClient()
       .from("desks")
@@ -458,6 +521,7 @@ export default function ClassroomPage() {
   }
 
   async function removeStudent(student: Student) {
+    if (!window.confirm(`Remove ${student.display_name}?`)) return;
     setError(null);
     const { error: deleteError } = await createClient()
       .from("students")
@@ -470,12 +534,13 @@ export default function ClassroomPage() {
     await loadStudents();
   }
 
-  async function copyDeskLink(token: string) {
-    const url = `${window.location.origin}/screen/s/${token}`;
+  async function copyDeskLink(desk: Desk) {
+    if (!desk.screen_token) return;
+    const url = `${window.location.origin}/screen/s/${desk.screen_token}`;
     try {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
+      setCopiedId(desk.id);
+      window.setTimeout(() => setCopiedId(null), 2000);
     } catch {
       setError("Couldn't copy the link. Open it from the button instead.");
     }
@@ -550,9 +615,23 @@ export default function ClassroomPage() {
         </Link>
 
         <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-            {classroom.name}
-          </h1>
+          <div className="min-w-0 flex-1">
+            <label className="sr-only" htmlFor="classroom-name">
+              Classroom name
+            </label>
+            <input
+              id="classroom-name"
+              defaultValue={classroom.name}
+              key={classroom.id}
+              maxLength={80}
+              autoComplete="off"
+              className="w-full max-w-xl bg-transparent text-3xl font-semibold tracking-tight outline-none hover:bg-white/60 focus-visible:rounded-md sm:text-4xl"
+              onBlur={(e) => void renameClassroom(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              }}
+            />
+          </div>
           <Button
             variant={classroom.blacked_out ? "primary" : "secondary"}
             onClick={toggleBlackout}
@@ -575,9 +654,9 @@ export default function ClassroomPage() {
                 <div>
                   <h2 className="text-lg font-semibold">Seating</h2>
                   <p className="mt-1 max-w-md text-sm text-muted">
-                    Tap a square to add a seat. Drag to move. Add a
-                    teacher&apos;s desk if the front of the room isn&apos;t a
-                    row of seats.
+                    Tap a square to add a seat. Drag to move, or tap a seat
+                    and use the arrows. Add a teacher&apos;s desk if the front
+                    of the room isn&apos;t a row of seats.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -606,7 +685,7 @@ export default function ClassroomPage() {
                   desk={selected}
                   student={seatedHere}
                   students={students}
-                  copied={copied}
+                  copied={copiedId === selected.id}
                   pairPath={pairPath}
                   onKind={(kind) => updateDesk(selected.id, { kind })}
                   onLabel={(label) =>
@@ -624,10 +703,24 @@ export default function ClassroomPage() {
                         ? assignStudent(seatedHere.id, null)
                         : undefined
                   }
-                  onCopy={() =>
-                    selected.screen_token &&
-                    copyDeskLink(selected.screen_token)
+                  onNudge={(dRow, dCol) =>
+                    void moveDesk(
+                      selected.id,
+                      selected.row + dRow,
+                      selected.col + dCol
+                    )
                   }
+                  canNudge={(dRow, dCol) =>
+                    canPlace(
+                      desks,
+                      selected.row + dRow,
+                      selected.col + dCol,
+                      spanCols(selected),
+                      spanRows(selected),
+                      selected.id
+                    )
+                  }
+                  onCopy={() => copyDeskLink(selected)}
                   onRotate={() => rotateDeskLink(selected.id)}
                   onRemove={() => removeDesk(selected.id)}
                   onBlackout={
@@ -640,11 +733,20 @@ export default function ClassroomPage() {
             </div>
 
             <div className="mt-10 border-b border-black/10 pb-10">
-              <h2 className="text-lg font-semibold">Students</h2>
-              <p className="mt-1 max-w-lg text-sm text-muted">
-                Each student has a PIN. You can tell them the number; they
-                enter it on the desk screen.
-              </p>
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Students</h2>
+                  <p className="mt-1 max-w-lg text-sm text-muted">
+                    Each student has a PIN. You can tell them the number; they
+                    enter it on the desk screen.
+                  </p>
+                </div>
+                {students.length > 0 ? (
+                  <Button variant="secondary" onClick={() => void copyPins()}>
+                    {pinsCopied ? "Copied" : "Copy PINs"}
+                  </Button>
+                ) : null}
+              </div>
 
               <fieldset className="mt-5">
                 <legend className="text-sm font-medium">How they sign in</legend>
@@ -829,7 +931,23 @@ export default function ClassroomPage() {
             <p className="mt-3 text-sm text-muted">
               Desk screens use their own link, after a PIN.
             </p>
+            <Link
+              href={`/screen/${classroom.id}`}
+              className="mt-2 inline-block text-sm text-accent hover:underline"
+            >
+              Open full screen
+            </Link>
           </aside>
+        </div>
+
+        <div className="mt-16 border-t border-black/10 pt-6">
+          <button
+            type="button"
+            onClick={() => void deleteClassroom()}
+            className="text-sm text-muted hover:text-red-800"
+          >
+            Remove this classroom
+          </button>
         </div>
       </Container>
     </div>
@@ -846,6 +964,8 @@ function DeskPanel({
   onLabel,
   onSpan,
   onAssign,
+  onNudge,
+  canNudge,
   onCopy,
   onRotate,
   onRemove,
@@ -860,6 +980,8 @@ function DeskPanel({
   onLabel: (label: string) => void;
   onSpan: (colSpan: number, rowSpan: number) => void;
   onAssign: (studentId: string) => void;
+  onNudge: (dRow: number, dCol: number) => void;
+  canNudge: (dRow: number, dCol: number) => boolean;
   onCopy: () => void;
   onRotate: () => void;
   onRemove: () => void;
@@ -914,6 +1036,46 @@ function DeskPanel({
           onBlur={(e) => onLabel(e.target.value)}
         />
       </label>
+
+      <div className="mt-4">
+        <p className="mb-1.5 text-sm font-medium">Move</p>
+        <div className="grid w-[6.75rem] grid-cols-3 gap-1">
+          <span />
+          <IconButton
+            label="Move up"
+            disabled={!canNudge(-1, 0)}
+            onClick={() => onNudge(-1, 0)}
+          >
+            ↑
+          </IconButton>
+          <span />
+          <IconButton
+            label="Move left"
+            disabled={!canNudge(0, -1)}
+            onClick={() => onNudge(0, -1)}
+          >
+            ←
+          </IconButton>
+          <span className="flex items-center justify-center text-[0.65rem] tabular-nums text-muted">
+            {desk.col + 1},{desk.row + 1}
+          </span>
+          <IconButton
+            label="Move right"
+            disabled={!canNudge(0, 1)}
+            onClick={() => onNudge(0, 1)}
+          >
+            →
+          </IconButton>
+          <span />
+          <IconButton
+            label="Move down"
+            disabled={!canNudge(1, 0)}
+            onClick={() => onNudge(1, 0)}
+          >
+            ↓
+          </IconButton>
+        </div>
+      </div>
 
       {desk.kind === "fixture" && (
         <div className="mt-4 grid grid-cols-2 gap-3">

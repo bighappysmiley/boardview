@@ -170,7 +170,9 @@ students
 
 Teacher tables have **row-level security**: a teacher can only read/write rows
 they own. Anonymous desk devices never SELECT these tables; they call
-`open_desk`, `unlock_screen`, and `desk_session`.
+`open_desk`, `unlock_screen`, `desk_session`, and `lock_screen`. In PIN-as-ID
+mode, Lock also unassigns that student from the desk so the next PIN can sit
+there.
 
 `position` is kept dense (0,1,2,…). Adding appends at `cameras.length`;
 reordering and deleting rewrite every row's position. See `moveCamera` and
@@ -284,8 +286,8 @@ bypasses RLS and `NEXT_PUBLIC_*` values are shipped to the browser.
 
 ## 9. Suggested next steps, in order
 
-1. **Pick the camera hardware**, then implement the feed. Start with MJPEG so
-   the existing `<img>` rendering works unchanged.
+1. **Pick the physical desk screen and camera**, then implement the feed.
+   Start with MJPEG so the existing `<img>` rendering works unchanged.
 2. **Record Stripe orders** — a `orders` table + a Stripe webhook route, so a
    purchase produces a shipping record.
 3. **Test on the real screen device** at its actual physical size; the layout

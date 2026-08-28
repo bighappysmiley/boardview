@@ -1370,6 +1370,50 @@ begin
 end;
 $$;
 
+create or replace function public.lock_screen(p_token uuid, p_session uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  d public.desks;
+  sess public.desk_sessions;
+  c public.classrooms;
+begin
+  if p_token is null or p_session is null then
+    raise exception 'Sign in with your PIN again.';
+  end if;
+
+  select * into sess from public.desk_sessions where token = p_session;
+  if sess.id is null then
+    return;
+  end if;
+
+  select * into d
+    from public.desks
+   where id = sess.desk_id
+     and screen_token = p_token
+     and kind = 'screen';
+
+  if d.id is null then
+    delete from public.desk_sessions where token = p_session;
+    return;
+  end if;
+
+  select * into c from public.classrooms where id = d.classroom_id;
+
+  if c.pin_mode = 'pin_as_id' then
+    update public.students
+       set desk_id = null
+     where id = sess.student_id
+       and desk_id = d.id;
+  end if;
+
+  delete from public.desk_sessions where id = sess.id;
+end;
+$$;
+
 create or replace function public.rotate_desk_token(p_desk uuid)
 returns uuid
 language plpgsql
@@ -1403,6 +1447,7 @@ $$;
 revoke all on function public.open_desk(uuid) from public;
 revoke all on function public.unlock_screen(uuid, text) from public;
 revoke all on function public.desk_session(uuid, uuid) from public;
+revoke all on function public.lock_screen(uuid, uuid) from public;
 revoke all on function public.rotate_desk_token(uuid) from public;
 revoke all on function public.desk_session_payload(uuid, uuid, uuid) from public;
 revoke all on function public.note_desk_failure(uuid) from public;
@@ -1413,6 +1458,7 @@ revoke all on function public.clear_desk_sessions_on_change() from public;
 grant execute on function public.open_desk(uuid) to anon, authenticated;
 grant execute on function public.unlock_screen(uuid, text) to anon, authenticated;
 grant execute on function public.desk_session(uuid, uuid) to anon, authenticated;
+grant execute on function public.lock_screen(uuid, uuid) to anon, authenticated;
 grant execute on function public.rotate_desk_token(uuid) to authenticated;
 grant execute on function public.hash_student_pin() to authenticated;
 grant execute on function public.ensure_desk_token() to authenticated;
