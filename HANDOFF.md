@@ -286,12 +286,19 @@ bypasses RLS and `NEXT_PUBLIC_*` values are shipped to the browser.
 
 ## 9. Suggested next steps, in order
 
-1. **Pick the physical desk screen and camera**, then implement the feed.
-   Start with MJPEG so the existing `<img>` rendering works unchanged.
+1. **Build the first physical kit** (thin, ~7", not a tablet). Camera feed
+   software comes after these parts are on a desk.
+   - Desk: [Waveshare 7inch HDMI LCD (H)](https://www.waveshare.com/7inch-hdmi-lcd-h.htm)
+     **without** the bulky case (~7 mm panel) + Raspberry Pi 4 (2 GB) on the
+     back, Chromium kiosk to `/screen/s/{token}`.
+   - Camera: Raspberry Pi Zero 2 W + Camera Module 3 Wide + a slim USB-C
+     power bank. Local MJPEG HTTP, pasted into the classroom camera link.
+     No cloud cameras (Ring / Blink / Wyze / Nixplay).
 2. **Record Stripe orders** — a `orders` table + a Stripe webhook route, so a
    purchase produces a shipping record.
-3. **Test on the real screen device** at its actual physical size; the layout
-   is responsive but has only been checked at 360–1440px in a desktop browser.
+3. **Test on that 7" panel** at real size; layout has only been checked at
+   360–1440px in a desktop browser. School units can later be a 7" Android
+   kiosk / photo-frame board with the same look, no Pi on the back.
 
 ---
 
