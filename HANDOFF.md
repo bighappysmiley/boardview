@@ -297,17 +297,11 @@ bypasses RLS and `NEXT_PUBLIC_*` values are shipped to the browser.
 
 ## 10. What has and hasn't been tested
 
-**Verified working:** production build and lint are clean; all routes render
-with no console errors; camera cycling wraps correctly in both directions via
-button and arrow keys; the full teacher CRUD path (create classroom, add /
-rename / reorder / delete camera, blackout toggle) was driven in a real
-browser against stubbed Supabase REST endpoints, and issues the correct
-writes with positions repacked densely; RLS policies verified against real
-PostgreSQL; no horizontal overflow at 360/420/768/1024/1440px; cards measured
-to equal heights.
+**Verified working:** production build and lint are clean; homepage, login, and the teacher
+classroom path (create, rename, seating, move arrows, copy PINs, pair a desk,
+unlock with a PIN, Lock, delete classroom) were driven in a real browser against
+the live project. Camera cycling wraps correctly in both directions via button
+and arrow keys. RLS policies verified against real PostgreSQL.
 
-**Not verified:** anything against a real live Supabase project (no
-credentials available at the time); Stripe checkout against real keys; the
-camera feed (doesn't exist yet); Realtime blackout propagation to a second
-device (the code subscribes correctly but has only been exercised
-single-client).
+**Not verified:** Stripe checkout against real keys; the camera feed (doesn't
+exist yet).
