@@ -281,6 +281,16 @@ what protects data, and `NEXT_PUBLIC_*` values are shipped to the browser.
 6. **Tailwind v4 has no JS config file.** Add tokens in `@theme inline` in
    `globals.css`.
 
+7. **Data API JWKS.** Desk screens and teacher queries send a JWT from Neon
+   Auth. Point `NEXT_PUBLIC_NEON_*` at the project's **default** branch
+   (Connect / Auth / Data API URLs). If the Data API returns
+   `jwk not found`, the proxy is caching an empty key set — wait, or
+   provision Data API on a fresh branch/compute with the Auth JWKS URL
+   (`…/auth/.well-known/jwks.json`). Restarting compute does not clear it.
+
+6. **Tailwind v4 has no JS config file.** Add tokens in `@theme inline` in
+   `globals.css`.
+
 ---
 
 ## 9. Suggested next steps, in order
