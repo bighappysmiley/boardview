@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ScreenCanvas, type ScreenMode } from "@/components/ScreenCanvas";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { DEMO_CLASSROOM_ID, demoCameras, demoClassroom } from "@/lib/demo";
@@ -12,6 +12,7 @@ import type { Camera, Classroom } from "@/lib/types";
 export default function ScreenPage() {
   const params = useParams<{ classroomId: string }>();
   const classroomId = params.classroomId;
+  const router = useRouter();
   const isDemo = classroomId === DEMO_CLASSROOM_ID || !isSupabaseConfigured;
 
   const [classroom, setClassroom] = useState<Classroom | null>(
@@ -30,62 +31,87 @@ export default function ScreenPage() {
 
     const supabase = createClient();
     let active = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    Promise.all([
-      supabase.from("classrooms").select("*").eq("id", classroomId).single(),
-      supabase
-        .from("cameras")
-        .select("*")
-        .eq("classroom_id", classroomId)
-        .order("position"),
-    ]).then(([classroomRes, camerasRes]) => {
-      if (!active) return;
-      if (classroomRes.error) {
-        setError("This screen isn't connected to a classroom yet.");
-        setLoading(false);
-        return;
-      }
-      setClassroom(classroomRes.data as Classroom);
-      setCameras((camerasRes.data ?? []) as Camera[]);
-      setLoading(false);
-    });
+    Promise.resolve()
+      .then(async () => {
+        const { data } = await supabase.auth.getSession();
+        if (!active) return;
+        if (!data.session?.user) {
+          router.replace(`/login?next=/screen/${classroomId}`);
+          return;
+        }
 
-    const channel = supabase
-      .channel(`screen:${classroomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "classrooms",
-          filter: `id=eq.${classroomId}`,
-        },
-        (payload) => setClassroom(payload.new as Classroom)
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "cameras",
-          filter: `classroom_id=eq.${classroomId}`,
-        },
-        () => {
+        const [classroomRes, camerasRes] = await Promise.all([
+          supabase
+            .from("classrooms")
+            .select("*")
+            .eq("id", classroomId)
+            .single(),
           supabase
             .from("cameras")
             .select("*")
             .eq("classroom_id", classroomId)
-            .order("position")
-            .then(({ data }) => setCameras((data ?? []) as Camera[]));
+            .order("position"),
+        ]);
+        if (!active) return;
+        if (classroomRes.error) {
+          setError("This screen isn't connected to a classroom yet.");
+          setLoading(false);
+          return;
         }
-      )
-      .subscribe();
+        setClassroom(classroomRes.data as Classroom);
+        setCameras((camerasRes.data ?? []) as Camera[]);
+        setLoading(false);
+
+        if (!active) return;
+        const nextChannel = supabase
+          .channel(`screen:${classroomId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "classrooms",
+              filter: `id=eq.${classroomId}`,
+            },
+            (payload) => setClassroom(payload.new as Classroom)
+          )
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "cameras",
+              filter: `classroom_id=eq.${classroomId}`,
+            },
+            () => {
+              supabase
+                .from("cameras")
+                .select("*")
+                .eq("classroom_id", classroomId)
+                .order("position")
+                .then(({ data }) => setCameras((data ?? []) as Camera[]));
+            }
+          )
+          .subscribe();
+        if (!active) {
+          supabase.removeChannel(nextChannel);
+          return;
+        }
+        channel = nextChannel;
+      })
+      .catch(() => {
+        if (!active) return;
+        setError("This screen isn't connected to a classroom yet.");
+        setLoading(false);
+      });
 
     return () => {
       active = false;
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
-  }, [classroomId, isDemo]);
+  }, [classroomId, isDemo, router]);
 
   const nextCamera = useCallback(() => {
     setIndex((current) => current + 1);
