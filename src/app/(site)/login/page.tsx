@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthCard, FormField, FormError } from "@/components/AuthCard";
 import { Button } from "@/components/Button";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient, isNeonConfigured } from "@/lib/neon";
 import {
   safeNextPath,
   setStaySignedIn,
@@ -29,7 +29,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
 
-    if (!isSupabaseConfigured) {
+    if (!isNeonConfigured) {
       setError(
         "We can't log you in just yet. Email hello@boardview.org and we'll help."
       );

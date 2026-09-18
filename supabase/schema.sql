@@ -1,5 +1,5 @@
--- BoardView database schema.
--- Run this once in the Supabase SQL editor (Database -> SQL Editor -> New query).
+-- Archived. BoardView now runs on Neon Auth + Data API.
+-- Apply neon/schema.sql to a fresh Neon project instead of this file.
 
 -- A classroom groups the screen with every camera pointed at something in
 -- that room: the main board, a second board, a poster on the wall, etc.

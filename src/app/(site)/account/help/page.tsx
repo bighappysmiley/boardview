@@ -6,7 +6,7 @@ import { Button } from "@/components/Button";
 import { FormError, FormNotice, TextArea, TextField } from "@/components/form";
 import { Container, Section } from "@/components/layout";
 import { SetupNotice } from "@/components/SetupNotice";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient, isNeonConfigured } from "@/lib/neon";
 import { useSession } from "@/lib/useSession";
 import type { Ticket } from "@/lib/types";
 import { formatWhen } from "@/lib/types";
@@ -42,7 +42,7 @@ export default function HelpPage() {
     };
   }, [user, load]);
 
-  if (!isSupabaseConfigured) return <SetupNotice what="Support" />;
+  if (!isNeonConfigured) return <SetupNotice what="Support" />;
 
   if (loading) {
     return (

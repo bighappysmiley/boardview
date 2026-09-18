@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { authHeaders, createClient, isNeonConfigured } from "@/lib/neon";
 import { useSession } from "@/lib/useSession";
 import type { TicketMessage } from "@/lib/types";
 import { ChatBubble } from "@/components/ChatBubble";
@@ -90,7 +90,7 @@ export function SupportChat() {
   }, [open, ticketId]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !ticketId || !token) return;
+    if (!isNeonConfigured || !ticketId || !token) return;
     let active = true;
     const supabase = createClient();
 
@@ -104,32 +104,10 @@ export function SupportChat() {
 
     Promise.resolve().then(load);
     const interval = window.setInterval(() => void load(), 3000);
-    const channel = supabase
-      .channel(`support:${ticketId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "ticket_messages",
-          filter: `ticket_id=eq.${ticketId}`,
-        },
-        (payload) => {
-          const row = payload.new as TicketMessage;
-          if (row.kind === "note") return;
-          setMessages((current) =>
-            current.some((message) => message.id === row.id)
-              ? current
-              : [...current, row]
-          );
-        }
-      )
-      .subscribe();
 
     return () => {
       active = false;
       window.clearInterval(interval);
-      supabase.removeChannel(channel);
     };
   }, [ticketId, token]);
 
@@ -150,7 +128,7 @@ export function SupportChat() {
     setSending(true);
     const response = await fetch("/api/support/start", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ name, email, token }),
     });
     const payload = (await response.json()) as {
@@ -185,7 +163,7 @@ export function SupportChat() {
     setSending(true);
     const response = await fetch("/api/support/send", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         ticketId,
         token,
@@ -245,7 +223,7 @@ export function SupportChat() {
           </div>
 
           <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-            {!isSupabaseConfigured ? (
+            {!isNeonConfigured ? (
               <p className="text-sm leading-relaxed text-muted">
                 Chat isn’t available yet. Email{" "}
                 <a
@@ -329,7 +307,7 @@ export function SupportChat() {
             )}
           </div>
 
-          {isSupabaseConfigured && inChat && !isStaff && (
+          {isNeonConfigured && inChat && !isStaff && (
             <form onSubmit={send} className="border-t border-black/8 p-3">
               <label className="sr-only" htmlFor={`${panelId}-draft`}>
                 Message

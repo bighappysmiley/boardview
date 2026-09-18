@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ScreenCanvas, type ScreenMode } from "@/components/ScreenCanvas";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient, isNeonConfigured } from "@/lib/neon";
 import { DEMO_CLASSROOM_ID, demoCameras, demoClassroom } from "@/lib/demo";
 import { useClock } from "@/lib/useClock";
 import type { Camera, Classroom } from "@/lib/types";
@@ -12,7 +12,8 @@ import type { Camera, Classroom } from "@/lib/types";
 export default function ScreenPage() {
   const params = useParams<{ classroomId: string }>();
   const classroomId = params.classroomId;
-  const isDemo = classroomId === DEMO_CLASSROOM_ID || !isSupabaseConfigured;
+  const router = useRouter();
+  const isDemo = classroomId === DEMO_CLASSROOM_ID || !isNeonConfigured;
 
   const [classroom, setClassroom] = useState<Classroom | null>(
     isDemo ? demoClassroom : null
@@ -23,22 +24,30 @@ export default function ScreenPage() {
   const [index, setIndex] = useState(0);
   const time = useClock();
 
-  // Load the room and its cameras, then stay subscribed so the teacher's
-  // blackout toggle and camera edits reach the screen without a refresh.
+  // Load the room and its cameras, then poll so the teacher's blackout
+  // toggle and camera edits reach this preview without a refresh.
   useEffect(() => {
     if (isDemo) return;
 
-    const supabase = createClient();
+    const db = createClient();
     let active = true;
 
-    Promise.all([
-      supabase.from("classrooms").select("*").eq("id", classroomId).single(),
-      supabase
-        .from("cameras")
-        .select("*")
-        .eq("classroom_id", classroomId)
-        .order("position"),
-    ]).then(([classroomRes, camerasRes]) => {
+    async function load() {
+      const { data } = await db.auth.getSession();
+      if (!active) return;
+      if (!data?.session?.user) {
+        router.replace(`/login?next=/screen/${classroomId}`);
+        return;
+      }
+
+      const [classroomRes, camerasRes] = await Promise.all([
+        db.from("classrooms").select("*").eq("id", classroomId).single(),
+        db
+          .from("cameras")
+          .select("*")
+          .eq("classroom_id", classroomId)
+          .order("position"),
+      ]);
       if (!active) return;
       if (classroomRes.error) {
         setError("This screen isn't connected to a classroom yet.");
@@ -48,44 +57,22 @@ export default function ScreenPage() {
       setClassroom(classroomRes.data as Classroom);
       setCameras((camerasRes.data ?? []) as Camera[]);
       setLoading(false);
-    });
+    }
 
-    const channel = supabase
-      .channel(`screen:${classroomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "classrooms",
-          filter: `id=eq.${classroomId}`,
-        },
-        (payload) => setClassroom(payload.new as Classroom)
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "cameras",
-          filter: `classroom_id=eq.${classroomId}`,
-        },
-        () => {
-          supabase
-            .from("cameras")
-            .select("*")
-            .eq("classroom_id", classroomId)
-            .order("position")
-            .then(({ data }) => setCameras((data ?? []) as Camera[]));
-        }
-      )
-      .subscribe();
+    Promise.resolve()
+      .then(load)
+      .catch(() => {
+        if (!active) return;
+        setError("This screen isn't connected to a classroom yet.");
+        setLoading(false);
+      });
 
+    const id = window.setInterval(() => void load(), 2500);
     return () => {
       active = false;
-      supabase.removeChannel(channel);
+      window.clearInterval(id);
     };
-  }, [classroomId, isDemo]);
+  }, [classroomId, isDemo, router]);
 
   const nextCamera = useCallback(() => {
     setIndex((current) => current + 1);

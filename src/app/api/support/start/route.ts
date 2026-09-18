@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { createAnonClient } from "@/lib/supabase/anon";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { getClientIp } from "@/lib/ip";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { isNeonConfigured } from "@/lib/neon";
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured) {
+  if (!isNeonConfigured) {
     return NextResponse.json(
       { error: "Support isn’t available yet." },
       { status: 503 }
@@ -24,8 +24,7 @@ export async function POST(request: Request) {
       ? body.token
       : crypto.randomUUID();
 
-  const sessionResponse = NextResponse.json({});
-  const session = createRouteHandlerClient(request, sessionResponse);
+  const session = createRouteHandlerClient(request);
   const {
     data: { user },
   } = await session.auth.getUser();

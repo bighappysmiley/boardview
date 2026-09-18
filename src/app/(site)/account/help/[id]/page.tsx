@@ -9,7 +9,7 @@ import { DeleteClosed } from "@/components/DeleteClosed";
 import { FormError, TextArea } from "@/components/form";
 import { Container, Section } from "@/components/layout";
 import { SetupNotice } from "@/components/SetupNotice";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { authHeaders, createClient, isNeonConfigured } from "@/lib/neon";
 import { useSession } from "@/lib/useSession";
 import type { Ticket, TicketMessage } from "@/lib/types";
 import { ChatBubble } from "@/components/ChatBubble";
@@ -43,7 +43,7 @@ export default function TicketThreadPage() {
   }, [params.id]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isNeonConfigured) return;
     if (loading) return;
     if (!user) {
       router.replace("/login?next=/account/help");
@@ -75,7 +75,7 @@ export default function TicketThreadPage() {
       setSending(true);
       const response = await fetch("/api/support/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: await authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ ticketId: ticket.id, body }),
       });
       const payload = (await response.json()) as {
@@ -97,7 +97,7 @@ export default function TicketThreadPage() {
     [ticket, load, router, backHref]
   );
 
-  if (!isSupabaseConfigured) return <SetupNotice what="Support" />;
+  if (!isNeonConfigured) return <SetupNotice what="Support" />;
 
   if (loading) {
     return (

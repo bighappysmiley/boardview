@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AuthCard, FormField, FormError, FormNotice } from "@/components/AuthCard";
 import { Button } from "@/components/Button";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient, isNeonConfigured } from "@/lib/neon";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError(null);
 
-    if (!isSupabaseConfigured) {
+    if (!isNeonConfigured) {
       setError("We can't reset passwords just yet. Email hello@boardview.org and we'll help.");
       return;
     }
@@ -28,12 +28,24 @@ export default function ResetPasswordPage() {
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({ password });
+    const db = createClient();
+    const token = new URLSearchParams(window.location.search).get("token");
+    if (token) {
+      const { error: verifyError } = await db.auth.verifyOtp({
+        token,
+        type: "recovery",
+      });
+      if (verifyError) {
+        setLoading(false);
+        setError(verifyError.message);
+        return;
+      }
+    }
+    const { error: updateError } = await db.auth.updateUser({ password });
     setLoading(false);
 
     if (updateError) {
-      setError(updateError.message);
+      setError(updateError.message ?? "We couldn't update that password.");
       return;
     }
     setDone(true);

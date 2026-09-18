@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AuthCard, FormField, FormError, FormNotice } from "@/components/AuthCard";
 import { Button } from "@/components/Button";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient, isNeonConfigured } from "@/lib/neon";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -16,7 +16,7 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError(null);
 
-    if (!isSupabaseConfigured) {
+    if (!isNeonConfigured) {
       setError("We can't reset passwords just yet. Email hello@boardview.org and we'll help.");
       return;
     }

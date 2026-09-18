@@ -13,7 +13,7 @@ product intent, data model, roadmap, and what is / isn't tested.
 ## Stack
 
 Next.js 16.3 (App Router, Turbopack), React 19, TypeScript strict, Tailwind
-CSS v4, Supabase (auth + Postgres + Realtime), Stripe (hardware only),
+CSS v4, Neon (Auth + Postgres + Data API), Stripe (hardware only),
 deployed on Netlify.
 
 **This Next.js version differs from older training data.** Version-matched
@@ -49,8 +49,8 @@ before writing routing or API code instead of relying on memory. The
   the screen displays** (`boot` / `live` / `blackout`). It's shared by the real
   screen route, the teacher's live preview, and the landing-page mocks. Change
   it there so all three stay in sync.
-- Blackout state lives on `classrooms.blacked_out` and reaches the screen over
-  Supabase Realtime.
+- Blackout state lives on `classrooms.blacked_out` and reaches paired desks
+  over a short session poll (Neon has no Realtime publication).
 - `cameras.position` is kept dense (0,1,2,…) — reorder and delete rewrite every
   affected row.
 
@@ -59,7 +59,8 @@ before writing routing or API code instead of relying on memory. The
 - `NEXT_PUBLIC_*` values are inlined at **build time**. Changing them in
   Netlify does nothing without a rebuild ("Clear cache and deploy site").
   Never mark them as secret in Netlify — secret scanning will fail the build.
-- Never use Supabase's `service_role` key in this project; it bypasses RLS.
+- Never put a Neon role password or a bypass key in this project; RLS is what
+  protects data.
 - ESLint bans `setState` called synchronously inside a `useEffect` body. Set
   initial state via `useState`, or update inside a promise/event callback.
   `useClock` uses `useSyncExternalStore` for this reason.
@@ -70,4 +71,4 @@ before writing routing or API code instead of relying on memory. The
 ## Before you claim something works
 
 Run `npx eslint .` and `npm run build`. `/screen/demo` renders the screen UI
-with sample data and needs no Supabase setup.
+with sample data and needs no Neon setup.

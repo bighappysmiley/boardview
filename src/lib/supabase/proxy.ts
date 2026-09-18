@@ -1,45 +1,45 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getClientIp } from "@/lib/ip";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const dataApiUrl = process.env.NEXT_PUBLIC_NEON_DATA_API_URL;
 
 /**
- * Refreshes the auth cookies on the response. Always return the same
- * NextResponse this helper last wrote, or the session is dropped.
+ * Neon Auth keeps the session in the browser client. Ban checks still run
+ * here so a blocked network is turned away before the page loads.
  */
 export async function refreshSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
-  if (!url || !anonKey) return response;
+  return NextResponse.next({ request });
+}
 
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet, headers) {
-        for (const { name, value } of cookiesToSet) {
-          request.cookies.set(name, value);
-        }
-        response = NextResponse.next({ request });
-        for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, options);
-        }
-        if (headers) {
-          for (const [key, value] of Object.entries(headers)) {
-            response.headers.set(key, value);
-          }
-        }
-      },
-    },
-  });
+export async function checkSupportBan(request: NextRequest, response: NextResponse) {
+  if (!dataApiUrl) return response;
 
-  const hasSessionCookie = request.cookies
-    .getAll()
-    .some((cookie) => cookie.name.includes("-auth-token"));
-  if (hasSessionCookie) {
-    await supabase.auth.getUser();
+  const ip = getClientIp(request);
+  const token = request.cookies.get("bv_support_token")?.value ?? null;
+
+  try {
+    const banned = await fetch(`${dataApiUrl.replace(/\/$/, "")}/rpc/is_support_banned`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ check_ip: ip, check_token: token }),
+      signal: AbortSignal.timeout(2000),
+    });
+    if (banned.ok && (await banned.json()) === true) {
+      const blocked = NextResponse.redirect(new URL("/banned", request.url));
+      for (const cookie of response.cookies.getAll()) {
+        blocked.cookies.set(cookie.name, cookie.value);
+      }
+      blocked.cookies.set("bv_banned", "1", {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
+        httpOnly: true,
+        sameSite: "lax",
+      });
+      return blocked;
+    }
+  } catch {
+    return response;
   }
 
   return response;
