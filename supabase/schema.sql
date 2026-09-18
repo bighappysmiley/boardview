@@ -931,6 +931,10 @@ grant execute on function public.delete_closed_ticket(uuid) to authenticated;
 -- Anonymous desk devices never SELECT these tables; they only call the
 -- security-definer functions below.
 
+-- crypt() / gen_salt() for student PIN hashes. Supabase enables this in
+-- the extensions schema; keep the statement so a fresh SQL-editor run works.
+create extension if not exists pgcrypto with schema extensions;
+
 alter table public.classrooms
   add column if not exists pin_mode text not null default 'assigned_desk';
 
