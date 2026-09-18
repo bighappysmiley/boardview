@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PinPad } from "@/components/PinPad";
 import { ScreenCanvas, type ScreenMode } from "@/components/ScreenCanvas";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient, isNeonConfigured } from "@/lib/neon";
 import { useClock } from "@/lib/useClock";
 import type { DeskSessionView, OpenDesk } from "@/lib/types";
 
@@ -24,10 +24,10 @@ export default function PairedDeskPage() {
 
   const [desk, setDesk] = useState<OpenDesk | null>(null);
   const [view, setView] = useState<DeskSessionView | null>(null);
-  const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [loading, setLoading] = useState(isNeonConfigured);
   const [pinError, setPinError] = useState<string | null>(null);
   const [fatal, setFatal] = useState<string | null>(
-    isSupabaseConfigured ? null : "This screen isn't connected."
+    isNeonConfigured ? null : "This screen isn't connected."
   );
   const [unlocking, setUnlocking] = useState(false);
   const [index, setIndex] = useState(0);
@@ -54,7 +54,7 @@ export default function PairedDeskPage() {
   }, [token]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isNeonConfigured) return;
 
     const supabase = createClient();
     let active = true;
@@ -111,7 +111,8 @@ export default function PairedDeskPage() {
       if (!current) return;
       supabase
         .rpc("desk_session", { p_token: token, p_session: current })
-        .then(({ data, error }) => {
+        .then((result: { data: unknown; error: { message: string } | null }) => {
+          const { data, error } = result;
           if (error || !data) {
             clearSession();
             setPinError("Sign in with your PIN again.");
@@ -127,7 +128,8 @@ export default function PairedDeskPage() {
     if (view || loading || fatal) return;
     const supabase = createClient();
     const id = window.setInterval(() => {
-      supabase.rpc("open_desk", { p_token: token }).then(({ data, error }) => {
+      supabase.rpc("open_desk", { p_token: token }).then((result: { data: unknown; error: { message: string } | null }) => {
+        const { data, error } = result;
         if (error || !data) {
           setFatal("This screen isn't connected to a classroom yet.");
           setDesk(null);

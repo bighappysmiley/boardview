@@ -8,7 +8,7 @@ import { Container, Section } from "@/components/layout";
 import { FormError, FormNotice, TextField } from "@/components/form";
 import { SetupNotice } from "@/components/SetupNotice";
 import { DeleteClosed } from "@/components/DeleteClosed";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { authHeaders, createClient, isNeonConfigured } from "@/lib/neon";
 import { useSession } from "@/lib/useSession";
 import type {
   AuditEntry,
@@ -89,7 +89,7 @@ export default function AdminPage() {
   }, [displayName, title]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isNeonConfigured) return;
     if (loading) return;
     if (!user) {
       router.replace("/login?next=/admin");
@@ -241,7 +241,7 @@ export default function AdminPage() {
     setError(null);
     const response = await fetch("/api/support/send", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ ticketId: id, body: "/delete" }),
     });
     const payload = (await response.json()) as { error?: string };
@@ -252,7 +252,7 @@ export default function AdminPage() {
     setTickets((current) => current.filter((row) => row.id !== id));
   }
 
-  if (!isSupabaseConfigured) return <SetupNotice what="Inbox" />;
+  if (!isNeonConfigured) return <SetupNotice what="Inbox" />;
 
   if (loading || !isStaff || !ready) {
     return (

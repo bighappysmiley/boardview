@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient, isNeonConfigured, asAuthUser, type AuthUser } from "@/lib/neon";
 import { endSessionIfBrowserClosed } from "@/lib/auth";
 import type { StaffRole } from "@/lib/types";
 import {
@@ -12,7 +11,7 @@ import {
 } from "@/lib/permissions";
 
 export function useSession() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isStaff, setIsStaff] = useState(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -20,14 +19,14 @@ export function useSession() {
   const [role, setRole] = useState<StaffRole | null>(null);
   const [permissions, setPermissions] =
     useState<StaffPermissions>(defaultPermissions);
-  const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [loading, setLoading] = useState(isNeonConfigured);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    const supabase = createClient();
+    if (!isNeonConfigured) return;
+    const db = createClient();
     let active = true;
 
-    async function applyUser(nextUser: User | null) {
+    async function applyUser(nextUser: AuthUser | null) {
       if (!active) return;
       setUser(nextUser);
       if (!nextUser?.email) {
@@ -39,7 +38,7 @@ export function useSession() {
         setPermissions(defaultPermissions);
         return;
       }
-      const { data: rows } = await supabase
+      const { data: rows } = await db
         .from("staff")
         .select("email, role, display_name, title, permissions");
       if (!active) return;
@@ -65,21 +64,19 @@ export function useSession() {
 
     Promise.resolve()
       .then(async () => {
-        await endSessionIfBrowserClosed(() => supabase.auth.signOut());
+        await endSessionIfBrowserClosed(() => db.auth.signOut());
         if (!active) return;
-        const { data } = await supabase.auth.getSession();
-        await applyUser(data.session?.user ?? null);
+        const { data } = await db.auth.getSession();
+        await applyUser(asAuthUser(data?.session?.user ?? null));
       })
       .finally(() => {
         if (active) setLoading(false);
       });
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "INITIAL_SESSION") return;
-        void applyUser(session?.user ?? null);
-      }
-    );
+    const { data: listener } = db.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") return;
+      void applyUser(asAuthUser(session?.user ?? null));
+    });
 
     return () => {
       active = false;

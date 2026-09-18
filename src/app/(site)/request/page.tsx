@@ -7,7 +7,7 @@ import { QuantityStepper } from "@/components/QuantityStepper";
 import { FormError, FormNotice, TextArea, TextField } from "@/components/form";
 import { Container, Section, SectionHeader } from "@/components/layout";
 import { SetupNotice } from "@/components/SetupNotice";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient, isNeonConfigured } from "@/lib/neon";
 import { useSession } from "@/lib/useSession";
 import type { HardwareRequest, RequestKind } from "@/lib/types";
 import { requestStatusLabel, formatWhen } from "@/lib/types";
@@ -45,7 +45,7 @@ export default function RequestPage() {
     };
   }, [user]);
 
-  if (!isSupabaseConfigured) return <SetupNotice what="Request BoardView" />;
+  if (!isNeonConfigured) return <SetupNotice what="Request BoardView" />;
 
   if (loading) {
     return (

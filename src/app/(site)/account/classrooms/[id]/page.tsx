@@ -10,7 +10,7 @@ import { SetupNotice } from "@/components/SetupNotice";
 import { ScreenCanvas, DeviceFrame } from "@/components/ScreenCanvas";
 import { SeatingChart } from "@/components/SeatingChart";
 import { StudentRoster } from "@/components/StudentRoster";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient, isNeonConfigured } from "@/lib/neon";
 import { useClock } from "@/lib/useClock";
 import { isPin, randomPin } from "@/lib/pins";
 import { canPlace, nextEmptyCell, spanCols, spanRows } from "@/lib/seating";
@@ -37,7 +37,7 @@ export default function ClassroomPage() {
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [desks, setDesks] = useState<Desk[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [loading, setLoading] = useState(isNeonConfigured);
   const [error, setError] = useState<string | null>(null);
   const [newLabel, setNewLabel] = useState("");
   const [newStudent, setNewStudent] = useState("");
@@ -80,7 +80,7 @@ export default function ClassroomPage() {
   }, [classroomId]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isNeonConfigured) return;
     const supabase = createClient();
     let active = true;
 
@@ -88,7 +88,7 @@ export default function ClassroomPage() {
       .then(async () => {
         const { data } = await supabase.auth.getSession();
         if (!active) return;
-        if (!data.session?.user) {
+        if (!data?.session?.user) {
           router.replace(`/login?next=/account/classrooms/${classroomId}`);
           return;
         }
@@ -560,7 +560,7 @@ export default function ClassroomPage() {
     return data as string;
   }
 
-  if (!isSupabaseConfigured) return <SetupNotice what="This classroom" />;
+  if (!isNeonConfigured) return <SetupNotice what="This classroom" />;
 
   if (loading) {
     return (

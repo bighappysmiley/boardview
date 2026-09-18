@@ -18,7 +18,7 @@ a Next.js app meant to be hosted free on Netlify.
 - **Landing page** (`/`) — explains the product for teachers and schools.
 - **Sign up / log in** (`/signup`, `/login`, `/forgot-password`,
   `/reset-password`) — email + password accounts with email verification,
-  backed by [Supabase](https://supabase.com). Create an account first; then
+  backed by [Neon](https://neon.tech). Create an account first; then
   submit a request.
 - **Request** (`/request`) — signed-in schools submit a classroom trial or
   hardware request (quantities and notes). There is no cart or checkout.
@@ -60,17 +60,18 @@ npm run dev
 
 Open http://localhost:3000.
 
-### Supabase (accounts, requests, tickets)
+### Neon (accounts, requests, tickets)
 
-1. Create a free project at [supabase.com](https://supabase.com).
-2. In **Project Settings → API**, copy the **Project URL** and **anon public**
-   key into `.env.local` as `NEXT_PUBLIC_SUPABASE_URL` and
-   `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-3. Open **Database → SQL Editor**, paste in
-   [`supabase/schema.sql`](supabase/schema.sql), and run it. That creates
-   classrooms, cameras, staff, requests, tickets, messages, and bans.
-   **Re-run this file after pulling schema changes** — it is written to be
-   safe to run again.
+1. Create a free project at [console.neon.tech](https://console.neon.tech)
+   (this app uses the **BoardView** project in the BigHappySmiley org).
+2. Enable **Auth** (Managed Better Auth) and the **Data API**. Copy the HTTPS
+   database URL (host + database name, no credentials) into `.env.local` as
+   `NEXT_PUBLIC_NEON_URL`. Optional overrides:
+   `NEXT_PUBLIC_NEON_AUTH_URL` and `NEXT_PUBLIC_NEON_DATA_API_URL`.
+3. Apply [`neon/schema.sql`](neon/schema.sql) in the Neon SQL Editor (or
+   `psql`). That creates classrooms, cameras, staff, requests, tickets,
+   messages, bans, desks, and PIN RPCs. **Re-run this file after pulling
+   schema changes** — it is written to be safe to run again.
 4. After you have signed up once, make your login an admin:
 
    ```sql
@@ -79,15 +80,13 @@ Open http://localhost:3000.
    on conflict (email) do update set role = 'admin';
    ```
 
-5. In **Authentication → URL Configuration**, add your site's URL (and
-   `http://localhost:3000` for local dev) to the redirect allow-list so the
-   `/auth/callback` route is permitted.
-6. Email verification is on by default for new Supabase projects — no extra
-   setup needed. You can customize the verification email template under
-   **Authentication → Email Templates**.
+5. In **Auth → Domains**, add your site's URL and `http://localhost:3000`
+   so sign-up and password-reset emails can return to the app.
+6. Sign-up sends a verification **code** (shared email provider). Enter it
+   on `/signup` before logging in.
 
-Supabase's free tier comfortably covers a school or small district's worth of
-teacher accounts. No `service_role` key is used.
+Neon's free plan covers a school or small district's worth of teacher
+accounts. No database role password is shipped to the browser.
 
 There is no self-serve checkout. Schools request a trial or hardware; you
 review those from **Admin**. Stripe keys in `.env.local.example` are unused
@@ -115,5 +114,5 @@ while requests are handled by hand.
 
 ## Tech stack
 
-Next.js (App Router) + TypeScript + Tailwind CSS, Supabase for auth and
+Next.js (App Router) + TypeScript + Tailwind CSS, Neon for auth and
 requests, deployed on Netlify.

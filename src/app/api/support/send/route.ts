@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createAnonClient } from "@/lib/supabase/anon";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { getClientIp } from "@/lib/ip";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { isNeonConfigured } from "@/lib/neon";
 import { canRunCommand, findCommand, helpText } from "@/lib/commands";
 import { resolvePermissions, type StaffPermissions } from "@/lib/permissions";
 import type { StaffRole } from "@/lib/types";
@@ -78,7 +78,7 @@ async function postNote(
 }
 
 export async function POST(request: Request) {
-  if (!isSupabaseConfigured) {
+  if (!isNeonConfigured) {
     return NextResponse.json(
       { error: "Support isn’t available yet." },
       { status: 503 }
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
   }
 
   const outgoing = NextResponse.json({ ok: true });
-  const supabaseAuth = createRouteHandlerClient(request, outgoing);
+  const supabaseAuth = createRouteHandlerClient(request);
   const {
     data: { user },
   } = await supabaseAuth.auth.getUser();
@@ -352,7 +352,7 @@ export async function POST(request: Request) {
 
   const profile = await profileOf(supabaseAuth);
   const isStaff = Boolean(
-    await supabaseAuth.rpc("is_staff").then((r) => r.data)
+    await supabaseAuth.rpc("is_staff").then((r: { data: unknown }) => r.data)
   );
   const display =
     profile?.display_name ??

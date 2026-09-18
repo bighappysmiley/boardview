@@ -5,7 +5,7 @@ import { Logo } from "./Logo";
 import { ButtonLink } from "./Button";
 import { Container } from "./layout";
 import { useSession } from "@/lib/useSession";
-import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { isNeonConfigured } from "@/lib/neon";
 
 const links = [
   { href: "/#how-it-works", label: "How it works" },
@@ -37,7 +37,7 @@ export function Navbar() {
           </div>
 
           <div className="flex shrink-0 items-center gap-3">
-            {isSupabaseConfigured && signedIn ? (
+            {isNeonConfigured && signedIn ? (
               <>
                 {(isAdmin || isStaff) && (
                   <Link

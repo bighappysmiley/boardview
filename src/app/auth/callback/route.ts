@@ -1,28 +1,22 @@
 import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@/lib/supabase/server";
 
+/**
+ * Password-reset and verification links from Neon Auth land here with a
+ * token. The browser client completes the flow on /reset-password.
+ */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get("code");
-  const requested = searchParams.get("next") ?? "/account";
+  const requested = searchParams.get("next") ?? "/reset-password";
   const next =
     requested.startsWith("/") && !requested.startsWith("//")
       ? requested
-      : "/account";
+      : "/reset-password";
 
-  const redirectTo = (path: string) => NextResponse.redirect(`${origin}${path}`);
-
-  if (!code) {
-    return redirectTo("/login");
-  }
-
-  const response = redirectTo(next);
-  const supabase = createRouteHandlerClient(request, response);
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-  if (error) {
-    return redirectTo(`/login?error=${encodeURIComponent(error.message)}`);
-  }
-
-  return response;
+  const token =
+    searchParams.get("token") ??
+    searchParams.get("code") ??
+    "";
+  const url = new URL(next, origin);
+  if (token) url.searchParams.set("token", token);
+  return NextResponse.redirect(url);
 }

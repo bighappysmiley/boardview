@@ -29,7 +29,7 @@ professional Apple or Google product — light, clean, glass-morphic. It must
 rounded neon cards. Keep it restrained.
 
 **Cost constraint:** the owner must not pay for any service to run this.
-Everything is on free tiers (Netlify hosting, Supabase free tier). Stripe is
+Everything is on free tiers (Netlify hosting, Neon free plan). Stripe is
 used for hardware sales — it has no monthly fee, only a per-transaction cut,
 so it costs nothing to have wired up. **The software is free for schools; only
 the physical hardware is paid for.**
@@ -43,7 +43,7 @@ the physical hardware is paid for.**
 | Area | Routes | Status |
 |---|---|---|
 | Marketing site | `/`, `/pricing` | Done |
-| Auth | `/signup`, `/login`, `/forgot-password`, `/reset-password`, `/auth/callback` | Done (Supabase, email verification) |
+| Auth | `/signup`, `/login`, `/forgot-password`, `/reset-password`, `/auth/callback` | Done (Neon Auth, email verification) |
 | Teacher controls | `/account`, `/account/classrooms/[id]` | Done (seating, students, PINs, cameras) |
 | Desk screen | `/screen/s/[token]` | Done (PIN pad, no teacher login) |
 | Teacher preview | `/screen/[classroomId]` | Done (signed-in only) |
@@ -74,7 +74,7 @@ the physical hardware is paid for.**
 - **TypeScript**, strict.
 - **Tailwind CSS v4** (CSS-first config — there is no `tailwind.config.js`;
   tokens live in `@theme inline` inside `src/app/globals.css`).
-- **Supabase** — auth, Postgres, Realtime.
+- **Neon** — Auth (Managed Better Auth), Postgres, Data API.
 - **Stripe** — hardware checkout only.
 - **Netlify** — hosting, via `@netlify/plugin-nextjs`.
 
@@ -115,12 +115,11 @@ src/
     types.ts          Classroom, Desk, Student, Camera
     seating.ts        Grid occupancy and placement
     pins.ts           Four-digit PIN helpers
-    supabase/client.ts  Browser client + isSupabaseConfigured
-    supabase/server.ts  Route-handler client (cookie read/write)
+    neon.ts           Browser + Data API client + isNeonConfigured
+    supabase/         Thin wrappers around neon.ts for route handlers
     demo.ts           Sample data for /screen/demo and landing mocks
     useClock.ts       Hydration-safe clock
-    hardwareKits.ts   Stripe kit definitions
-supabase/schema.sql   Run this in the Supabase SQL editor
+neon/schema.sql       Run this against the Neon SQL editor (or psql)
 ```
 
 **Why the `(site)` route group exists:** `/screen/*` must render fullscreen
@@ -134,7 +133,7 @@ If you add a new marketing/account page, put it in `(site)/`.
 ```
 classrooms
   id           uuid pk
-  owner_id     uuid -> auth.users(id) cascade
+  owner_id     uuid  -- Neon Auth user id (auth.uid())
   name         text (1..80 chars)
   blacked_out  boolean default false   -- all screens
   pin_mode     assigned_desk | pin_as_id
@@ -233,21 +232,21 @@ npm run build                      # production build
 npx eslint .                       # lint
 ```
 
-`/screen/demo` works with sample cameras and **no Supabase setup**, which
+`/screen/demo` works with sample cameras and **no Neon setup**, which
 makes it the fastest way to see the screen UI.
 
 ### Environment variables
 
 | Variable | Secret? | Notes |
 |---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | No | Public by design |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | No | Public by design; RLS is what protects data |
+| `NEXT_PUBLIC_NEON_URL` | No | `https://ep-….neon.tech/neondb` — no credentials |
+| `NEXT_PUBLIC_NEON_AUTH_URL` | No | Optional override; derived from `NEON_URL` |
+| `NEXT_PUBLIC_NEON_DATA_API_URL` | No | Optional override; derived from `NEON_URL` |
 | `STRIPE_SECRET_KEY` | **Yes** | Server-only, used in `/api/checkout` |
-| `STRIPE_PRICE_CLASSROOM_KIT` | No | A `price_...` id |
-| `STRIPE_PRICE_SCHOOL_BUNDLE` | No | A `price_...` id |
+| `STRIPE_PRICE_DESK_SET` | No | A `price_...` id |
 
-**Never** put Supabase's `service_role` / secret key in this project — it
-bypasses RLS and `NEXT_PUBLIC_*` values are shipped to the browser.
+**Never** put a Neon role password or a bypass key in this project — RLS is
+what protects data, and `NEXT_PUBLIC_*` values are shipped to the browser.
 
 ---
 
@@ -255,8 +254,8 @@ bypasses RLS and `NEXT_PUBLIC_*` values are shipped to the browser.
 
 1. **`NEXT_PUBLIC_*` values are frozen into the JavaScript at build time.**
    Adding or changing them in Netlify does nothing until you rebuild.
-   *Verified:* a build without them contains no Supabase URL anywhere in the
-   client bundle; a build with them has the URL and key inlined. On Netlify
+   *Verified:* a build without them contains no Neon URL anywhere in the
+   client bundle; a build with them has the URL inlined. On Netlify
    use **Deploys → Trigger deploy → Clear cache and deploy site**, then
    hard-refresh the browser. On Netlify, do **not** tick "contains secret
    values" for `NEXT_PUBLIC_*` vars — secret scanning will fail the build,
@@ -275,9 +274,19 @@ bypasses RLS and `NEXT_PUBLIC_*` values are shipped to the browser.
 4. **`window.location.href = x` is flagged** by the immutability rule. Use
    `window.location.assign(x)`.
 
-5. **Supabase redirect allow-list.** Auth → URL Configuration must include
-   `http://localhost:3000/**` and your deployed URL, or verification links
+5. **Neon Auth trusted domains.** Console → Auth → Domains must include
+   `http://localhost:3000` and your deployed URL, or sign-up / reset links
    fail.
+
+6. **Tailwind v4 has no JS config file.** Add tokens in `@theme inline` in
+   `globals.css`.
+
+7. **Data API JWKS.** Desk screens and teacher queries send a JWT from Neon
+   Auth. Point `NEXT_PUBLIC_NEON_*` at the project's **default** branch
+   (Connect / Auth / Data API URLs). If the Data API returns
+   `jwk not found`, the proxy is caching an empty key set — wait, or
+   provision Data API on a fresh branch/compute with the Auth JWKS URL
+   (`…/auth/.well-known/jwks.json`). Restarting compute does not clear it.
 
 6. **Tailwind v4 has no JS config file.** Add tokens in `@theme inline` in
    `globals.css`.

@@ -3,12 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/Button";
 import { Container } from "@/components/layout";
 import { BareInput, FormError } from "@/components/form";
 import { SetupNotice } from "@/components/SetupNotice";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { createClient, isNeonConfigured, asAuthUser, type AuthUser } from "@/lib/neon";
 import type { Classroom, DeskKind } from "@/lib/types";
 
 type Row = Classroom & {
@@ -19,9 +18,9 @@ type Row = Classroom & {
 
 export default function AccountPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [classrooms, setClassrooms] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [loading, setLoading] = useState(isNeonConfigured);
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -36,7 +35,7 @@ export default function AccountPage() {
   }, []);
 
   useEffect(() => {
-    if (!isSupabaseConfigured) return;
+    if (!isNeonConfigured) return;
     const supabase = createClient();
     let active = true;
 
@@ -44,11 +43,11 @@ export default function AccountPage() {
       .then(async () => {
         const { data } = await supabase.auth.getSession();
         if (!active) return;
-        if (!data.session?.user) {
+        if (!data?.session?.user) {
           router.replace("/login?next=/account");
           return;
         }
-        setUser(data.session.user);
+        setUser(asAuthUser(data.session.user));
         await load();
       })
       .finally(() => {
@@ -92,7 +91,7 @@ export default function AccountPage() {
     router.push("/");
   }
 
-  if (!isSupabaseConfigured) return <SetupNotice what="Your classrooms" />;
+  if (!isNeonConfigured) return <SetupNotice what="Your classrooms" />;
 
   if (loading) {
     return (
