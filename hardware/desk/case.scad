@@ -1,12 +1,18 @@
-// BoardView desk screen case
-// Waveshare 5inch DSI LCD (C) + Raspberry Pi 4B in the stand, not behind the glass.
+// BoardView desk screen — slim like a payment terminal, not a Pi sandwich.
 //
-// Dimensions from Waveshare 5inch-DSI-LCD-C.pdf (2024-10-17 drawing):
+// The Pi 4 lives in the stand. Do not bolt it to the LCD, and do not use the
+// 4 mm standoffs Waveshare ships for that. Those are what make Pi builds
+// chunky. The DSI connector is the tallest part on the panel; it exits
+// through a hole in the back into the stand, so it does not set the
+// thickness of the whole screen.
+//
+// Panel: Waveshare 5inch DSI LCD (C). Drawing 5inch-DSI-LCD-C.pdf (2024-10-17):
 //   glass 120.7 x 77.7, view 109.0 x 65.8, left bezel 5.85, bottom bezel 8.3
-//   PCB 121 x 76, corner holes 4mm inset, Pi holes 58 x 49
-// Pi 4 from raspberrypi.com mechanical drawing: 85 x 56, holes 58 x 49, USB-C at x=7.7
+//   PCB 121 x 76, corner holes 4 mm inset
+// Pi 4: 85 x 56, holes 58 x 49, USB-C at x=7.7
 //
-// Print PETG, 0.2mm, 20% infill. Bezel/back/lid flat on the bed. Base on its bottom.
+// Print PETG, 0.2 mm, 20% infill. Bezel / back / lid flat on the bed.
+// Base on its bottom.
 //   openscad -o stl/bezel.stl -D 'part="bezel"' case.scad
 //   openscad -o stl/back.stl  -D 'part="back"'  case.scad
 //   openscad -o stl/base.stl  -D 'part="base"'  case.scad
@@ -27,19 +33,20 @@ pcb_w = 121.0;
 pcb_h = 76.0;
 pcb_hole_inset = 4.0;
 
-wall = 2.2;
-gap = 0.45;
-lip = 1.4;
+wall = 1.8;
+gap = 0.40;
+lip = 1.0;
 glass_z = 1.8;
 pcb_z = 1.6;
-comp_z = 8.0;
-back_z = 2.2;
+// Clearance for chips on the back of the PCB only — not a Pi, not standoffs.
+comp_z = 2.8;
+back_z = 1.5;
 
 overlap = 0.9;
-fillet = 2.4;
+fillet = 2.0;
 
 screw_d = 2.6;
-boss_d = 6.2;
+boss_d = 5.6;
 
 pi_w = 85.0;
 pi_d = 56.0;
@@ -57,8 +64,10 @@ screen_z = lip + glass_z + pcb_z + comp_z + back_z;
 
 base_w = outer_w + 4;
 base_d = 86;
-base_h = 46;
-lid_z = 2.2;
+base_h = 42;
+lid_z = 2.0;
+
+echo(str("screen thickness mm = ", screen_z));
 
 module rrect(w, h, r) {
   offset(r = r)
@@ -114,8 +123,18 @@ module pcb_pocket() {
     cube([pcb_w + gap, pcb_h + gap, pcb_z + comp_z + 1]);
 }
 
+// DSI FPC connector sits on the bottom edge of the PCB (~5 mm tall).
+// Cut it out of the back so the connector and 160 mm ribbon drop into
+// the stand instead of padding the whole panel.
+module dsi_cut(extra_z = 8) {
+  translate([0, -outer_h / 2 + 9, 0])
+    cube([26, 12, extra_z], center = true);
+}
+
 module bezel() {
-  z = lip + glass_z + pcb_z + 1.2;
+  // Walls run the full cavity so the back sits flush — no open sides,
+  // no empty Pi-sized bay.
+  z = lip + glass_z + pcb_z + comp_z;
   difference() {
     union() {
       difference() {
@@ -136,40 +155,35 @@ module bezel() {
         translate([0, 0, -1])
           cylinder(d = 2.2, h = z + 2);
     }
+    dsi_cut(z * 2);
   }
 }
 
 module back() {
   difference() {
-    union() {
-      rbox(outer_w, outer_h, back_z, fillet);
-      translate([-outer_w / 2, -outer_h / 2, back_z])
-        pcb_holes()
-          cylinder(d = boss_d, h = 1.6);
-    }
+    rbox(outer_w, outer_h, back_z, fillet);
     translate([-outer_w / 2, -outer_h / 2, -1])
       pcb_holes()
         cylinder(d = screw_d, h = back_z + 8);
-    translate([0, -outer_h / 2 + 7, back_z / 2])
-      cube([16, 3.2, back_z + 6], center = true);
+    dsi_cut(back_z + 10);
     for (i = [-2, -1, 0, 1, 2])
-      translate([i * 10, 10, back_z / 2])
-        cube([3.2, 18, back_z + 4], center = true);
+      translate([i * 10, 8, back_z / 2])
+        cube([2.8, 16, back_z + 4], center = true);
   }
 }
 
 // Y = 0 at the back (USB-C), +Y toward the student. Z up.
 // Slope is `tilt` degrees from the desk.
-function slope_y() = (base_h - 12) / tan(tilt);
+function slope_y() = (base_h - 10) / tan(tilt);
 
 module base_profile() {
   sy = slope_y();
   polygon([
     [0, 0],
     [base_d, 0],
-    [base_d, 12],
+    [base_d, 10],
     [base_d - sy, base_h],
-    [0, 24]
+    [0, 22]
   ]);
 }
 
@@ -187,7 +201,7 @@ module screen_slot() {
   translate([0, base_d - sy + 6, base_h - 4])
     rotate([tilt, 0, 0])
       translate([0, 8, 0])
-        cube([outer_w + 0.8, 18, screen_z + 1.0], center = true);
+        cube([outer_w + 0.8, 16, screen_z + 1.2], center = true);
 }
 
 module pi_pocket() {
@@ -208,22 +222,17 @@ module base() {
     base_body();
     screen_slot();
     pi_pocket();
-    // Open the back so the Pi slides in; the lid closes it.
     translate([-pi_w / 2 - pi_clear, -1, lid_z + 0.2])
       cube([pi_w + pi_clear * 2, wall + 6, pi_h + 6]);
-    // USB-C through the lid plane (cut the body too, in case)
     translate([-pi_w / 2 + pi_usbc_x, 0, lid_z + 5])
       cube([12, 16, 8], center = true);
-    // DSI ribbon from the slot down to the Pi
-    translate([0, base_d / 2, 20])
+    translate([0, base_d / 2, 18])
       cube([14, 40, 8], center = true);
-    // Lid screw holes
     for (x = [-base_w / 2 + 8, base_w / 2 - 8],
          y = [8, base_d - 10])
       translate([x, y, -1])
         cylinder(d = 2.2, h = lid_z + 6);
   }
-  // Pi mounting bosses (M2.5 self-tap)
   translate([-pi_w / 2, wall + 4, lid_z])
     for (x = [3.5, 3.5 + pi_hole], y = [3.5, 3.5 + pi_hole_y])
       translate([x, y, 0])

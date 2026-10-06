@@ -290,8 +290,9 @@ bypasses RLS and `NEXT_PUBLIC_*` values are shipped to the browser.
    tablet). Camera feed software comes after these parts are on a desk.
    Buy list and printable case: `hardware/desk/`.
    - Desk: [Waveshare 5inch DSI LCD (C)](https://www.waveshare.com/5inch-dsi-lcd-c.htm)
-     (1024×600 IPS glass) in the printed bezel; Raspberry Pi 4 (2 GB) in the
-     stand, not stacked on the glass. Chromium kiosk to `/screen/s/{token}`.
+     (1024×600 IPS glass) in the printed bezel (~9 mm thick). Raspberry Pi 4
+     (2 GB) in the stand, never bolted to the glass — that stacked build is
+     what makes Pi desks chunky. Chromium kiosk to `/screen/s/{token}`.
    - Camera: Raspberry Pi Zero 2 W + Arducam Camera Module 3 Wide (22–22
      cable) + USB-C wall power. Local MJPEG HTTP, pasted into the classroom
      camera link. No cloud cameras (Ring / Blink / Wyze / Nixplay).
@@ -299,7 +300,8 @@ bypasses RLS and `NEXT_PUBLIC_*` values are shipped to the browser.
    purchase produces a shipping record.
 3. **Test on that 5" panel** at real size; layout has only been checked at
    360–1440px in a desktop browser. School units can later be the same 5"
-   look as a single thin kiosk / POS board, no Pi on the back.
+   look as a single thin kiosk / POS board, no Pi on the back. The printed
+   case already keeps the Pi in the stand so the first unit is that thin.
 
 ---
 
